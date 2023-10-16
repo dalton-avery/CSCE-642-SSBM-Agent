@@ -1,11 +1,17 @@
 import melee
 import sys
-import Args
+import os
+import arg_parser
+from pathlib import Path
+from dotenv import load_dotenv
 
-DOLPHIN_EXE_PATH, MELEE_ISO_PATH = Args.get_paths()
+load_dotenv(Path("../.env"))
+
+ISO_PATH = os.getenv('ISO_PATH')
+SLIPPI_PATH = os.getenv('SLIPPI_PATH')
 
 console = melee.console.Console(
-    path=DOLPHIN_EXE_PATH,
+    path=SLIPPI_PATH,
     fullscreen=False
 )
 
@@ -21,7 +27,7 @@ controller2 = melee.controller.Controller(
     type=melee.ControllerType.STANDARD
 )
 
-console.run(iso_path=MELEE_ISO_PATH)
+console.run(iso_path=ISO_PATH)
 print("Connecting to console...")
 if not console.connect():
     print("ERROR: Failed to connect to the console.")

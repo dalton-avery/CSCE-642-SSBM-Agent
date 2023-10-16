@@ -1,0 +1,4 @@
+matplotlib==3.4.1
+melee==0.37.0
+numpy==1.19.5
+python-dotenv==0.21.0
