@@ -1,3 +1,8 @@
 from agents.dqn import DQN
 
-agent = DQN()
+from TheGym import MeleeEnv
+
+env = MeleeEnv()
+agent = DQN(env)
+
+agent.train_episode()
