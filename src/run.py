@@ -6,4 +6,4 @@ env = MeleeEnv()
 agent = DQN(env)
 
 for i in range(100):
-    agent.train_episode()
+    agent.train_episode(i)

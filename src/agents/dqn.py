@@ -35,18 +35,17 @@ class QFunction(nn.Module):
 class DQN():
     def __init__(self, env):
         self.env = env
-
         # Create Q-network
         self.model = QFunction(
-            env.observation_space.shape[0],
+            env.get_obs_shape(),
             env.action_space.n,
-            self.options.layers,
+            [32,32], #hardcoded layers
         )
         # Create target Q-network
         self.target_model = deepcopy(self.model)
         # Set up the optimizer
         self.optimizer = AdamW(
-            self.model.parameters(), lr=self.options.alpha, amsgrad=True
+            self.model.parameters(), lr=0.01, amsgrad=True #hardcoded alpha
         )
         # Define the loss function
         self.loss_fn = nn.SmoothL1Loss()
@@ -56,7 +55,7 @@ class DQN():
             p.requires_grad = False
 
         # Replay buffer
-        self.replay_memory = deque(maxlen=2000) # hardcoded for now
+        self.replay_memory = deque(maxlen=2000) # hardcoded replay size
 
         # Number of training steps so far
         self.n_steps = 0
@@ -72,9 +71,9 @@ class DQN():
         probs = np.zeros((nA,), dtype=float)
         for a in range(nA):
             if a == aStar:
-                probs[a] = 1 - self.options.epsilon + self.options.epsilon / nA
+                probs[a] = 1 - 0.01 + 0.01 / nA #hardcoded epsilon
             else:
-                probs[a] = self.options.epsilon / nA
+                probs[a] = 0.01 / nA #hardcoded epsilon
 
         return probs
 
@@ -85,13 +84,13 @@ class DQN():
             if dones[i]:
                 target_q[i] = rewards[i]
             else:
-                target_q[i] = rewards[i] + self.options.gamma * torch.max(self.target_model(next_states[i]))
+                target_q[i] = rewards[i] + 0.95 * torch.max(self.target_model(next_states[i])) #hardcoded gamma
 
         return target_q
 
     def replay(self):
-        if len(self.replay_memory) > self.options.batch_size:
-            minibatch = random.sample(self.replay_memory, self.options.batch_size)
+        if len(self.replay_memory) > 32: #hardcoded batch size
+            minibatch = random.sample(self.replay_memory, 32)
             minibatch = [
                 np.array(
                     [
@@ -131,20 +130,18 @@ class DQN():
     def memorize(self, state, action, reward, next_state, done):
         self.replay_memory.append((state, action, reward, next_state, done))
     
-    def train_episode(self):
-        # while True:
-        #     obs, r, _, _, _ = self.env.step(self.env.action_space.sample())
+    def train_episode(self, i):
         state, _ = self.env.reset()
 
-        for step in range(self.options.steps):
-
+        for step in range(10000): #hardcoded steps
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
-            next_state, reward, done, _ = self.step(action)
+            next_state, reward, done, _, _ = self.env.step(action)
+            print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
             self.memorize(state, action, reward, next_state, done)
             state = next_state
             self.replay()
-            if step % self.options.update_target_estimator_every == 0:
+            if step % 100 == 0: #hardcoded update_target_estimator_every
                 self.update_target_model()
             if done:
                 break

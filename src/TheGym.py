@@ -50,7 +50,7 @@ class MeleeEnv(gym.Env):
         reward = self._calc_reward(obs)
         done = self.gamestate.menu_state != melee.Menu.IN_GAME # this may not work
         
-        return obs, reward, done, False, {}
+        return self._get_flat_state(obs), reward, done, False, {}
 
     def reset(self):
         while self.gamestate.menu_state != melee.Menu.IN_GAME:
@@ -81,8 +81,26 @@ class MeleeEnv(gym.Env):
                 autostart=True,
                 swag=False
             )
-        print(self._get_obs())
         self.prev_obs = None
+        return self._get_flat_state(self._get_obs()), None
+
+    def get_obs_shape(self):
+        input_size = 0
+
+        for key, space in self.observation_space.spaces.items():
+            if isinstance(space, gym.spaces.Discrete):
+                input_size += space.n
+            else:
+                input_size += np.prod(space.shape)
+
+        return input_size
+    
+    def _get_flat_state(self, obs):
+        flat_state = []
+        for key, space in obs.items():
+            for val in space:
+                flat_state.append(val)
+        return np.array(flat_state, dtype=np.float32)
 
     def _setup(self):
         ISO_PATH = os.getenv('ISO_PATH')
@@ -130,7 +148,7 @@ class MeleeEnv(gym.Env):
         adversary = self.gamestate.players[2]
         
         obs = {
-            'position': np.array([agent.position]),
+            'position': np.array([agent.position.x, agent.position.y]),
             'shield_strength': np.array([agent.shield_strength]),
             'percent': np.array([agent.percent]),
             'speed': np.array(
@@ -152,9 +170,9 @@ class MeleeEnv(gym.Env):
                 agent.hitstun_frames_left]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
             'stock': np.array([agent.stock]),
-            'action': np.array([agent.action, agent.action_frame]), # action_frame
+            'action': np.array([agent.action.value, agent.action_frame]), # action_frame
             
-            'adversary_position': np.array([adversary.position]),
+            'adversary_position': np.array([adversary.position.x, adversary.position.y]),
             'adversary_shield_strength': np.array([adversary.shield_strength]),
             'adversary_percent': np.array([adversary.percent]),
             'adversary_speed': np.array(
@@ -176,7 +194,7 @@ class MeleeEnv(gym.Env):
                 adversary.hitstun_frames_left]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
             'adversary_stock': np.array([adversary.stock]),
-            'adversary_action': np.array([adversary.action, adversary.action_frame]) # action_frame
+            'adversary_action': np.array([adversary.action.value, adversary.action_frame]) # action_frame
         }
 
         return obs
@@ -239,7 +257,9 @@ class MeleeEnv(gym.Env):
         ]
 
     def _calc_reward(self, obs):
-        reward = 0
+        # TODO: make this actually good
+
+        reward = [0]
         if self.prev_obs is not None:
             dpo = self.prev_obs['adversary_percent']
             d_o = obs['adversary_percent']
@@ -247,5 +267,10 @@ class MeleeEnv(gym.Env):
             d_a = obs['percent']
             reward += (dpo-d_o) * math.e ** (-0.1*d_o) - (dpa-d_a) * math.e ** (-0.1*d_a) # R = (d'_o - d_o)e^(-0.1*d_o)-(d'_a - d_a)e^(-0.1*d_a)
 
+            if self.prev_obs['stock'] > obs['stock']:
+                reward -= 100
+            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
+                reward += 100
+
         self.prev_obs = obs
-        return reward
+        return reward[0]
