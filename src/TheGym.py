@@ -4,12 +4,16 @@ import os, sys
 import numpy as np
 import melee
 import math
+from pathlib import Path
+from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
     
     def __init__(self):
         super(MeleeEnv, self).__init__()
         
+        load_dotenv(Path("../.env"))
+
         # Connect to emulator and run melee
         self._setup()
 
@@ -39,6 +43,8 @@ class MeleeEnv(gym.Env):
 
         self.gamestate = self.console.step()
 
+        print("initial state", self.gamestate)
+
         self.reset()
         
 
@@ -53,34 +59,76 @@ class MeleeEnv(gym.Env):
         return self._get_flat_state(obs), reward, done, False, {}
 
     def reset(self):
+        # TOFIX: select CPU on first episode
         while self.gamestate.menu_state != melee.Menu.IN_GAME:
             self.gamestate = self.console.step()
+            
             if self.gamestate is None:
                 continue
 
-            melee.MenuHelper.menu_helper_simple(
-                gamestate=self.gamestate,
-                controller=self.controller1,
-                character_selected=melee.Character.CPTFALCON,
-                stage_selected=melee.Stage.BATTLEFIELD,
-                connect_code="",
-                cpu_level=0,
-                costume=0,
-                autostart=True,
-                swag=False
-            )
+            if self.gamestate.menu_state == melee.Menu.CHARACTER_SELECT:
+                if self.gamestate.players[1].character != melee.Character.CPTFALCON:
+                    melee.MenuHelper.choose_character(
+                        gamestate=self.gamestate,
+                        controller=self.controller1,
+                        character=melee.Character.CPTFALCON,
+                        cpu_level=0, # level 0 means player
+                        costume=0,
+                        start=False,
+                        swag=False
+                    )
+                else:
+                    self.controller1.press_button(melee.Button.BUTTON_A)
+                
+                if self.gamestate.players[2].character != melee.Character.DK or self.gamestate.players[2].cpu_level != 9:
+                    melee.MenuHelper.choose_character(
+                        gamestate=self.gamestate,
+                        controller=self.controller2,
+                        character=melee.Character.DK,
+                        cpu_level=9,
+                        costume=0,
+                        start=True,
+                        swag=False
+                    )
+                else:
+                    self.controller2.release_button(melee.Button.BUTTON_A)
+                    self.controller2.flush()
+                    self.controller2.release_all()
+                
+                print(self.controller2.current.button)
+            
+            if self.gamestate.menu_state in [melee.Menu.PRESS_START, melee.Menu.MAIN_MENU]:
+                melee.MenuHelper.choose_versus_mode(self.gamestate, self.controller2)
 
-            melee.MenuHelper.menu_helper_simple(
-                gamestate=self.gamestate,
-                controller=self.controller2,
-                character_selected=melee.Character.DK,
-                stage_selected=melee.Stage.BATTLEFIELD,
-                connect_code="",
-                cpu_level=6,
-                costume=0,
-                autostart=True,
-                swag=False
-            )
+            elif self.gamestate.menu_state == melee.Menu.STAGE_SELECT:
+                melee.MenuHelper.choose_stage(melee.Stage.BATTLEFIELD, self.gamestate, self.controller2)
+
+            # # Select character for agent
+            # melee.MenuHelper.menu_helper_simple(
+            #     gamestate=self.gamestate,
+            #     controller=self.controller1,
+            #     character_selected=melee.Character.CPTFALCON,
+            #     stage_selected=melee.Stage.BATTLEFIELD,
+            #     connect_code="",
+            #     cpu_level=0, # level 0 means player
+            #     costume=0,
+            #     autostart=False,
+            #     swag=False
+            # )
+
+            # # Select character for opponent
+            # melee.MenuHelper.menu_helper_simple(
+            #     gamestate=self.gamestate,
+            #     controller=self.controller2,
+            #     character_selected=melee.Character.DK,
+            #     stage_selected=melee.Stage.BATTLEFIELD,
+            #     connect_code="",
+            #     cpu_level=9,
+            #     costume=0,
+            #     autostart=False,
+            #     swag=False
+            # )
+            
         self.prev_obs = None
         return self._get_flat_state(self._get_obs()), None
 
@@ -103,9 +151,10 @@ class MeleeEnv(gym.Env):
         return np.array(flat_state, dtype=np.float32)
 
     def _setup(self):
+        print('Setting up')
         ISO_PATH = os.getenv('ISO_PATH')
         SLIPPI_PATH = os.getenv('SLIPPI_PATH')
-
+        print(ISO_PATH, SLIPPI_PATH)
         self.console = melee.console.Console(
             path=SLIPPI_PATH,
             fullscreen=False
@@ -274,3 +323,18 @@ class MeleeEnv(gym.Env):
 
         self.prev_obs = obs
         return reward[0]
+
+    def quit(self):
+        #  Lt-Rt-A-Start to force exit
+        while self.gamestate.menu_state != melee.Menu.IN_GAME:
+            pass
+        self.controller1.release_all()
+        self.controller1.press_button(melee.Button.BUTTON_START)
+        self.controller1.release_button(melee.Button.BUTTON_START)        
+        self.controller1.press_button(melee.Button.BUTTON_L)
+        self.controller1.press_button(melee.Button.BUTTON_R)
+        self.controller1.press_button(melee.Button.BUTTON_A)
+        self.controller1.press_button(melee.Button.BUTTON_START)
+        self.controller1.release_all()
+        # melee.MenuHelper.skip_postgame(self.controller1, self.gamestate)
+

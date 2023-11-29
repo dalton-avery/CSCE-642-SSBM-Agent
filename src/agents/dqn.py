@@ -129,11 +129,12 @@ class DQN():
     
     def memorize(self, state, action, reward, next_state, done):
         self.replay_memory.append((state, action, reward, next_state, done))
+
     
     def train_episode(self, i):
         state, _ = self.env.reset()
-
-        for step in range(10000): #hardcoded steps
+        
+        for step in range(10000): # hardcoded steps
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
             next_state, reward, done, _, _ = self.env.step(action)
