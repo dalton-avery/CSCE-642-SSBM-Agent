@@ -268,9 +268,9 @@ class MeleeEnv(gym.Env):
             reward += (dpo-d_o) * math.e ** (-0.1*d_o) - (dpa-d_a) * math.e ** (-0.1*d_a) # R = (d'_o - d_o)e^(-0.1*d_o)-(d'_a - d_a)e^(-0.1*d_a)
 
             if self.prev_obs['stock'] > obs['stock']:
-                reward -= 100
+                return -100
             if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                reward += 100
+                return 100
 
         self.prev_obs = obs
         return reward[0]
