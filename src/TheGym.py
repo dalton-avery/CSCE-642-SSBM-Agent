@@ -76,7 +76,7 @@ class MeleeEnv(gym.Env):
                 character_selected=melee.Character.DK,
                 stage_selected=melee.Stage.BATTLEFIELD,
                 connect_code="",
-                cpu_level=9,
+                cpu_level=6,
                 costume=0,
                 autostart=True,
                 swag=False
@@ -261,16 +261,16 @@ class MeleeEnv(gym.Env):
 
         reward = [0]
         if self.prev_obs is not None:
-            dpo = self.prev_obs['adversary_percent']
-            d_o = obs['adversary_percent']
-            dpa = self.prev_obs['percent']
-            d_a = obs['percent']
+            dpo = self.prev_obs['percent']
+            d_o = obs['percent']
+            dpa = self.prev_obs['adversary_percent']
+            d_a = obs['adversary_percent']
             reward += (dpo-d_o) * math.e ** (-0.1*d_o) - (dpa-d_a) * math.e ** (-0.1*d_a) # R = (d'_o - d_o)e^(-0.1*d_o)-(d'_a - d_a)e^(-0.1*d_a)
 
             if self.prev_obs['stock'] > obs['stock']:
-                return -100
+                reward = [-100]
             if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                return 100
+                reward = [100]
 
         self.prev_obs = obs
         return reward[0]
