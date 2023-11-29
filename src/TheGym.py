@@ -76,7 +76,7 @@ class MeleeEnv(gym.Env):
                 character_selected=melee.Character.DK,
                 stage_selected=melee.Stage.BATTLEFIELD,
                 connect_code="",
-                cpu_level=6,
+                cpu_level=9,
                 costume=0,
                 autostart=True,
                 swag=False

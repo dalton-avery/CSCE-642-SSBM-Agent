@@ -5,5 +5,6 @@ from TheGym import MeleeEnv
 env = MeleeEnv()
 agent = DQN(env)
 
-for i in range(100):
+for i in range(10000):
     agent.train_episode(i)
+    agent.save()

@@ -59,6 +59,11 @@ class DQN():
 
         # Number of training steps so far
         self.n_steps = 0
+    
+    def save(self):
+        torch.save(self.model, "agents/dqn/model.pt")
+        torch.save(self.target_model, "agents/dqn/target_model.pt")
+
 
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
