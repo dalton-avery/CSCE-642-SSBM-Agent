@@ -4,11 +4,14 @@ import os, sys
 import numpy as np
 import melee
 import math
+from pathlib import Path
+from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
     
     def __init__(self):
         super(MeleeEnv, self).__init__()
+        load_dotenv(Path("../.env"))
         
         # Connect to emulator and run melee
         self._setup()
@@ -105,6 +108,9 @@ class MeleeEnv(gym.Env):
     def _setup(self):
         ISO_PATH = os.getenv('ISO_PATH')
         SLIPPI_PATH = os.getenv('SLIPPI_PATH')
+        print(ISO_PATH)
+        print(SLIPPI_PATH)
+
 
         self.console = melee.console.Console(
             path=SLIPPI_PATH,

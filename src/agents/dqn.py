@@ -9,6 +9,17 @@ import numpy as np
 
 from torch.optim import AdamW
 
+class Hyperparameters:
+    def __init__(self, alpha, gamma, epsilon, steps_per_episode, replay_memory_size, update_frequency, batch_size, layers):
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.steps_per_episode = steps_per_episode
+        self.replay_memory_size = replay_memory_size
+        self.update_frequency = update_frequency
+        self.batch_size = batch_size
+        self.layers = layers
+
 class QFunction(nn.Module):
     """
     Q-network definition.
@@ -33,19 +44,20 @@ class QFunction(nn.Module):
         return self.layers[-1](x).squeeze(dim=-1)
 
 class DQN():
-    def __init__(self, env):
+    def __init__(self, env, options):
         self.env = env
+        self.options = options
         # Create Q-network
         self.model = QFunction(
             env.get_obs_shape(),
             env.action_space.n,
-            [32,32], #hardcoded layers
+            self.options.layers,
         )
         # Create target Q-network
         self.target_model = deepcopy(self.model)
         # Set up the optimizer
         self.optimizer = AdamW(
-            self.model.parameters(), lr=0.01, amsgrad=True #hardcoded alpha
+            self.model.parameters(), lr=self.options.alpha, amsgrad=True
         )
         # Define the loss function
         self.loss_fn = nn.SmoothL1Loss()
@@ -55,7 +67,7 @@ class DQN():
             p.requires_grad = False
 
         # Replay buffer
-        self.replay_memory = deque(maxlen=2000) # hardcoded replay size
+        self.replay_memory = deque(maxlen=self.options.replay_memory_size)
 
         # Number of training steps so far
         self.n_steps = 0
@@ -76,9 +88,9 @@ class DQN():
         probs = np.zeros((nA,), dtype=float)
         for a in range(nA):
             if a == aStar:
-                probs[a] = 1 - 0.01 + 0.01 / nA #hardcoded epsilon
+                probs[a] = 1 - self.options.epsilon + self.options.epsilon / nA
             else:
-                probs[a] = 0.01 / nA #hardcoded epsilon
+                probs[a] = self.options.epsilon / nA
 
         return probs
 
@@ -89,13 +101,13 @@ class DQN():
             if dones[i]:
                 target_q[i] = rewards[i]
             else:
-                target_q[i] = rewards[i] + 0.95 * torch.max(self.target_model(next_states[i])) #hardcoded gamma
+                target_q[i] = rewards[i] + self.options.gamma * torch.max(self.target_model(next_states[i]))
 
         return target_q
 
     def replay(self):
-        if len(self.replay_memory) > 32: #hardcoded batch size
-            minibatch = random.sample(self.replay_memory, 32)
+        if len(self.replay_memory) > self.options.batch_size:
+            minibatch = random.sample(self.replay_memory, self.options.batch_size)
             minibatch = [
                 np.array(
                     [
@@ -144,7 +156,7 @@ class DQN():
             self.env.skip_episode()
             return
 
-        for step in range(10000): #hardcoded steps
+        for step in range(self.options.steps_per_episode):
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
             next_state, reward, done, _, _ = self.env.step(action)
@@ -154,7 +166,7 @@ class DQN():
             self.memorize(state, action, reward, next_state, done)
             state = next_state
             self.replay()
-            if step % 100 == 0: #hardcoded update_target_estimator_every
+            if step % self.options.update_frequency == 0:
                 self.update_target_model()
             if done:
                 break
