@@ -11,14 +11,14 @@ class MeleeEnv(gym.Env):
     
     def __init__(self):
         super(MeleeEnv, self).__init__()
-        load_dotenv(Path("../.env"))
+        load_dotenv(Path("./.env"))
         
         # Connect to emulator and run melee
         self._setup()
 
         self._define_actions()
 
-        self.action_space = gym.spaces.Discrete(26)
+        self.action_space = gym.spaces.Discrete(25)
 
         self.observation_space = gym.spaces.Dict({
             'position': gym.spaces.Box(low=-10000, high=10000, shape=(2,), dtype=np.float32), # GET MIN AND MAX VALUES FROM LIB MELEE
@@ -108,9 +108,6 @@ class MeleeEnv(gym.Env):
     def _setup(self):
         ISO_PATH = os.getenv('ISO_PATH')
         SLIPPI_PATH = os.getenv('SLIPPI_PATH')
-        print(ISO_PATH)
-        print(SLIPPI_PATH)
-
 
         self.console = melee.console.Console(
             path=SLIPPI_PATH,
@@ -144,7 +141,6 @@ class MeleeEnv(gym.Env):
 
     def _take_action(self, controller, action):
         controller.tilt_analog(melee.Button.BUTTON_MAIN, self.action_map[action]['main_stick'][0], self.action_map[action]['main_stick'][1])
-        controller.tilt_analog(melee.Button.BUTTON_C, self.action_map[action]['c_stick'][0], self.action_map[action]['c_stick'][1])
         if self.action_map[action]['button'] is not None:
             controller.release_all()
             controller.press_button(self.action_map[action]['button'])
@@ -206,60 +202,61 @@ class MeleeEnv(gym.Env):
         return obs
     
     def _define_actions(self):
-        # 4 Smash Attacks               (A + [Up, Down, Left, Right] main stick)  
-        # 5 Tilt/Aerial Attacks         (A or [Up, Down, Left, Right] C stick)
+        # 4 Smash/Aerial Attacks        (A + [Up, Down, Left, Right] main stick)  
+        # 5 Tilt Attacks                (A or [Up, Down, Left, Right] C stick)
         # 5 Special Attacks             (B, B + [Up, Down, Left, Right] main stick)
         # 4 Movement                    ([Up, Down, Left, Right] main stick)
-        # 1 Jump                        (Y)
         # 5 Shield/Air Dodge/Roll       (L or L + [Up, Down, Left, Right] main stick)
         # 1 Grab                        (Z)
-        ANALOG_UP = (0.5, 1.0)
         ANALOG_DOWN = (0.5, 0)
+        ANALOG_TILT_DOWN = (0.5, 0.25)
+        ANALOG_TILT_UP = (0.5, 0.75)
+        ANALOG_UP = (0.5, 1.0)
         ANALOG_LEFT = (0.0, 0.5)
-        ANALOG_RIGHT= (1.0, 0.5)
+        ANALOG_TILT_LEFT = (0.25, 0.5)
         ANALOG_NEUTRAL = (0.5, 0.5)
+        ANALOG_TILT_RIGHT = (0.75, 0.5)
+        ANALOG_RIGHT= (1.0, 0.5)
+        
         self.action_map = [
             # Smash Attacks
-            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_UP, 'c_stick': ANALOG_NEUTRAL}, # Up Smash                     | 0
-            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_DOWN, 'c_stick': ANALOG_NEUTRAL}, # Down Smash                 | 1
-            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_LEFT, 'c_stick': ANALOG_NEUTRAL}, # Left Smash                 | 2
-            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_RIGHT, 'c_stick': ANALOG_NEUTRAL}, # Right Smash               | 3
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_UP}, # Up Smash / Up Aair           | 0
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_DOWN}, # Down Smash / Down Air      | 1
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_LEFT}, # Left Smash / Forward Air   | 2
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_RIGHT}, # Right Smash / Back Air    | 3
 
             # Tilt/Aerial Attacks 
-            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # Neutral Tilt            | 4
-            {'button': None, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_UP}, # Up Tilt                                       | 5
-            {'button': None, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_DOWN}, # Down Tilt                                   | 6
-            {'button': None, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_LEFT}, # Left Tilt                                   | 7
-            {'button': None, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_RIGHT}, # Right Tilt                                 | 8
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_NEUTRAL}, # Jab / Neutral Air       | 4
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_TILT_UP}, # Up Tilt                 | 5
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_TILT_DOWN}, # Down Tilt             | 6
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_TILT_LEFT}, # Left Tilt             | 7
+            {'button': melee.Button.BUTTON_A, 'main_stick': ANALOG_TILT_RIGHT}, # Right Tilt           | 8
 
             # Special Attacks
-            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # Neutral Special         | 9
-            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_UP, 'c_stick': ANALOG_NEUTRAL}, # Up Special                   | 10
-            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_DOWN, 'c_stick': ANALOG_NEUTRAL}, # Down Special               | 11
-            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_LEFT, 'c_stick': ANALOG_NEUTRAL}, # Left Special               | 12
-            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_RIGHT, 'c_stick': ANALOG_NEUTRAL}, # Right Special             | 13
+            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_NEUTRAL}, # Neutral Special         | 9
+            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_UP}, # Up Special                   | 10
+            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_DOWN}, # Down Special               | 11
+            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_LEFT}, # Left Special               | 12
+            {'button': melee.Button.BUTTON_B, 'main_stick': ANALOG_RIGHT}, # Right Special             | 13
 
             # Movement
-            {'button': None, 'main_stick': ANALOG_UP, 'c_stick': ANALOG_NEUTRAL}, # Up                                            | 14
-            {'button': None, 'main_stick': ANALOG_DOWN, 'c_stick': ANALOG_NEUTRAL}, # Down                                        | 15
-            {'button': None, 'main_stick': ANALOG_LEFT, 'c_stick': ANALOG_NEUTRAL}, # Left                                        | 16
-            {'button': None, 'main_stick': ANALOG_RIGHT, 'c_stick': ANALOG_NEUTRAL}, # Right                                      | 17
-
-            # Jump
-            {'button': melee.Button.BUTTON_Y, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # Jump                    | 18
+            {'button': None, 'main_stick': ANALOG_UP}, # Jump                                          | 14
+            {'button': None, 'main_stick': ANALOG_DOWN}, # Down                                        | 15
+            {'button': None, 'main_stick': ANALOG_LEFT}, # Left                                        | 16
+            {'button': None, 'main_stick': ANALOG_RIGHT}, # Right                                      | 17
 
             # Shield/Air Dodge/Roll
-            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # Shield Neutral          | 19
-            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_UP, 'c_stick': ANALOG_NEUTRAL}, # Shield Up                    | 20
-            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_DOWN, 'c_stick': ANALOG_NEUTRAL}, # Shield Down                | 21
-            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_LEFT, 'c_stick': ANALOG_NEUTRAL}, # Shield Left                | 22
-            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_RIGHT, 'c_stick': ANALOG_NEUTRAL}, # Shield Right              | 23
+            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_NEUTRAL}, # Shield Neutral          | 18
+            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_UP}, # Shield Up                    | 19
+            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_DOWN}, # Shield Down                | 20
+            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_LEFT}, # Shield Left                | 21
+            {'button': melee.Button.BUTTON_L, 'main_stick': ANALOG_RIGHT}, # Shield Right              | 22
 
             # Grab
-            {'button': melee.Button.BUTTON_Z, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # Grab                    | 24
+            {'button': melee.Button.BUTTON_Z, 'main_stick': ANALOG_NEUTRAL}, # Grab                    | 23
 
             # No Action
-            {'button': None, 'main_stick': ANALOG_NEUTRAL, 'c_stick': ANALOG_NEUTRAL}, # No Action                                | 25
+            {'button': None, 'main_stick': ANALOG_NEUTRAL}, # No Action                                | 24
         ]
 
     def _calc_reward(self, obs):
@@ -276,11 +273,9 @@ class MeleeEnv(gym.Env):
                 reward += abs(adver_delta) - abs(agent_delta)
 
             if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                print(self.gamestate.menu_state)
                 reward += 1000
 
             if self.prev_obs['stock'] > obs['stock']:
-                print(self.gamestate.menu_state)
                 reward -= 1000
             
             if curr_off_stage:
