@@ -138,11 +138,18 @@ class DQN():
     def train_episode(self, i):
         state, _ = self.env.reset()
 
+        total_reward = 0
+
+        if i==0:
+            self.env.skip_episode()
+            return
+
         for step in range(10000): #hardcoded steps
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
             next_state, reward, done, _, _ = self.env.step(action)
-            if step % 250 == 0 or reward != 0:
+            total_reward += reward
+            if step % 250 == 0:
                 print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
             self.memorize(state, action, reward, next_state, done)
             state = next_state
@@ -151,6 +158,8 @@ class DQN():
                 self.update_target_model()
             if done:
                 break
+        
+        return total_reward
     
     def create_greedy_policy(self):
         def policy_fn(state):

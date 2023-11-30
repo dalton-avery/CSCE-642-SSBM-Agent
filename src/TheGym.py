@@ -76,7 +76,7 @@ class MeleeEnv(gym.Env):
                 character_selected=melee.Character.DK,
                 stage_selected=melee.Stage.BATTLEFIELD,
                 connect_code="",
-                cpu_level=6,
+                cpu_level=9,
                 costume=0,
                 autostart=True,
                 swag=False
@@ -259,18 +259,34 @@ class MeleeEnv(gym.Env):
     def _calc_reward(self, obs):
         # TODO: make this actually good
 
-        reward = [0]
-        if self.prev_obs is not None:
-            dpo = self.prev_obs['percent']
-            d_o = obs['percent']
-            dpa = self.prev_obs['adversary_percent']
-            d_a = obs['adversary_percent']
-            reward += (dpo-d_o) * math.e ** (-0.1*d_o) - (dpa-d_a) * math.e ** (-0.1*d_a) # R = (d'_o - d_o)e^(-0.1*d_o)-(d'_a - d_a)e^(-0.1*d_a)
+        reward = 0
+        if self.prev_obs is not None and self.gamestate.menu_state == melee.Menu.IN_GAME:
+            [agent_delta] = obs['percent'] - self.prev_obs['percent']
+            [adver_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent']
+            prev_off_stage = self.prev_obs['state'][2]
+            curr_off_stage = obs['state'][2]
+
+            if self.prev_obs['adversary_stock'] == obs['adversary_stock'] and self.prev_obs['stock'] == obs['stock']:
+                reward += abs(adver_delta) - abs(agent_delta)
+
+            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
+                print(self.gamestate.menu_state)
+                reward += 1000
 
             if self.prev_obs['stock'] > obs['stock']:
-                reward = [-100]
-            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                reward = [100]
+                print(self.gamestate.menu_state)
+                reward -= 1000
+            
+            if curr_off_stage:
+                reward -= 1
+
 
         self.prev_obs = obs
-        return reward[0]
+        if round(reward) != 0:
+            print(round(reward))
+
+        return reward
+    
+    def skip_episode(self):
+        while self.gamestate.menu_state == melee.Menu.IN_GAME:
+            self.step(16)
