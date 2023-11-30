@@ -61,8 +61,8 @@ class DQN():
         self.n_steps = 0
     
     def save(self):
-        torch.save(self.model, "agents/dqn/model.pt")
-        torch.save(self.target_model, "agents/dqn/target_model.pt")
+        torch.save(self.model, "./src/agents/dqn/model.pt")
+        torch.save(self.target_model, "./src/agents/dqn/target_model.pt")
 
 
     def update_target_model(self):
@@ -138,11 +138,19 @@ class DQN():
     def train_episode(self, i):
         state, _ = self.env.reset()
 
+        total_reward = 0
+
+        if i==0:
+            self.env.skip_episode()
+            return
+
         for step in range(10000): #hardcoded steps
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
             next_state, reward, done, _, _ = self.env.step(action)
-            print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
+            total_reward += reward
+            if step % 250 == 0:
+                print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
             self.memorize(state, action, reward, next_state, done)
             state = next_state
             self.replay()
@@ -150,6 +158,8 @@ class DQN():
                 self.update_target_model()
             if done:
                 break
+        
+        return total_reward
     
     def create_greedy_policy(self):
         def policy_fn(state):

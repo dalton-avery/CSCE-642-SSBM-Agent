@@ -6,5 +6,6 @@ env = MeleeEnv()
 agent = DQN(env)
 
 for i in range(10000):
-    agent.train_episode(i)
+    reward = agent.train_episode(i)
+    print('\nEpisode', i, 'reward:', reward, '\n')
     agent.save()
