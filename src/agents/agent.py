@@ -7,8 +7,8 @@ class Solvers(Enum):
 
 class Modes(Enum):
     TRAIN = 1
-    # UPDATE = 2
-    TEST = 3
+    TEST = 2
+    # UPDATE = 3
 
 class Agent:
     def __init__(self, env, solver, mode):
