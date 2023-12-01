@@ -76,6 +76,9 @@ class DQN():
         torch.save(self.model, "./src/agents/dqn/model.pt")
         torch.save(self.target_model, "./src/agents/dqn/target_model.pt")
 
+    def load(self):
+        self.model = torch.load("./src/agents/dqn/model.pt")
+        self.target_model = torch.load("./src/agents/dqn/target_model.pt")
 
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
@@ -161,8 +164,8 @@ class DQN():
             action = np.random.choice(np.arange(len(probs)), p=probs)  
             next_state, reward, done, _, _ = self.env.step(action)
             total_reward += reward
-            if step % 250 == 0:
-                print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
+            # if step % 250 == 0:
+            #     print('Episode: ', i, 'Step: ', step, ', Reward: ', reward)
             self.memorize(state, action, reward, next_state, done)
             state = next_state
             self.replay()
@@ -180,3 +183,9 @@ class DQN():
             return torch.argmax(q_values).detach().numpy()
 
         return policy_fn
+    
+    def run(self):
+        state = self.env._get_flat_state(self.env._get_obs())
+        probs = self.epsilon_greedy(state)
+        action = np.random.choice(np.arange(len(probs)), p=probs)
+        self.env.step(action)

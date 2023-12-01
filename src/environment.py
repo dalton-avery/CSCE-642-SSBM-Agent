@@ -9,9 +9,10 @@ from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
     
-    def __init__(self):
+    def __init__(self, opponent=9):
         super(MeleeEnv, self).__init__()
         load_dotenv(Path("./.env"))
+        self.opponent = opponent
         
         # Connect to emulator and run melee
         self._setup()
@@ -69,7 +70,7 @@ class MeleeEnv(gym.Env):
                 connect_code="",
                 cpu_level=0,
                 costume=0,
-                autostart=True,
+                autostart=self.opponent, # false if hmn
                 swag=False
             )
 
@@ -79,9 +80,9 @@ class MeleeEnv(gym.Env):
                 character_selected=melee.Character.DK,
                 stage_selected=melee.Stage.BATTLEFIELD,
                 connect_code="",
-                cpu_level=9,
+                cpu_level=self.opponent,
                 costume=0,
-                autostart=True,
+                autostart=self.opponent, # false if hmn
                 swag=False
             )
         self.prev_obs = None
@@ -123,7 +124,7 @@ class MeleeEnv(gym.Env):
         self.controller2 = melee.controller.Controller(
             self.console,
             port=2,
-            type=melee.ControllerType.STANDARD
+            type=melee.ControllerType.GCN_ADAPTER if self.opponent == 0 else melee.ControllerType.STANDARD
         )
 
         self.console.run(iso_path=ISO_PATH)
@@ -147,7 +148,7 @@ class MeleeEnv(gym.Env):
 
     def _get_obs(self):
         agent = self.gamestate.players[1]
-        adversary = self.gamestate.players[2]
+        adversary = self.gamestate.players[2] if self.opponent != 0 else self.gamestate.players[4]
         
         obs = {
             'position': np.array([agent.position.x, agent.position.y]),

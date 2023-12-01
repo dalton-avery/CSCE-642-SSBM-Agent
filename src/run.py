@@ -1,12 +1,30 @@
-from agents.dqn import DQN, Hyperparameters
+from environment import MeleeEnv
+from agents.agent import Agent, Modes, Solvers
 
-from TheGym import MeleeEnv
+def get_args(): # TODO: argparser
+    solver = Solvers.DQN
+    mode = Modes.TRAIN
+    versus = 9 # CPU lvl where 0 is human
+    return solver, mode, versus
 
-options = Hyperparameters(alpha=0.01, gamma=0.95, epsilon=0.01, steps_per_episode=10000, replay_memory_size=2000, update_frequency=100, batch_size=32, layers=[32,32])
-env = MeleeEnv()
-agent = DQN(env, options)
+def run_test(agent):
+    while True:
+        agent.solver.run()
 
-for i in range(10000):
-    reward = agent.train_episode(i)
-    print('\nEpisode', i, 'reward:', reward, '\n')
-    agent.save()
+def run_train(agent):
+    for i in range(10000): # hardcoded episodes
+        reward = agent.solver.train_episode(i)
+        print('\nEpisode', i, 'reward:', reward, '\n')
+        agent.solver.save()
+
+def main():
+    solver, mode, versus = get_args()
+    env = MeleeEnv(opponent=versus)
+    agent = Agent(env, solver, mode)
+    if mode == Modes.TEST:
+        run_test(agent)
+    else:
+        run_train(agent)
+
+if __name__ == '__main__':
+    main()
