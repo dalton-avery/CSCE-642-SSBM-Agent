@@ -76,7 +76,7 @@ class MeleeEnv(gym.Env):
             melee.MenuHelper.menu_helper_simple(
                 gamestate=self.gamestate,
                 controller=self.controller2,
-                character_selected=melee.Character.DK,
+                character_selected=melee.Character.CPTFALCON,
                 stage_selected=melee.Stage.BATTLEFIELD,
                 connect_code="",
                 cpu_level=9,
