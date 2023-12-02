@@ -9,13 +9,6 @@ from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
 
-    # class Player:
-    #     def __init__(self, port, cpu_level, playable=False):
-    #         self.port = port
-    #         self.cpu_level = cpu_level
-    #         self.playable = playable
-    #         self.controller = None
-    
     def __init__(self, opponent=9):
         super(MeleeEnv, self).__init__()
         load_dotenv(Path("./.env"))
@@ -130,13 +123,11 @@ class MeleeEnv(gym.Env):
         )
 
         self.console.run(iso_path=ISO_PATH)
-        print("Connecting to console...")
         if not self.console.connect():
             print("ERROR: Failed to connect to the console.")
             sys.exit(-1)
         print("Console connected")
 
-        print("Connecting controllers to console...")
         if not self.adversary_controller.connect() or not self.agent_controller.connect():
             print("ERROR: Failed to connect the controllers.")
             sys.exit(-1)
@@ -292,8 +283,4 @@ class MeleeEnv(gym.Env):
             print(round(reward))
 
         return reward
-    
-    def skip_episode(self):
-        while self.gamestate.menu_state == melee.Menu.IN_GAME:
-            self.step(16)
 

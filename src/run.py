@@ -5,15 +5,16 @@ import pandas as pd
 
 def get_args(): # TODO: argparser
     solver = Solvers.DQN
-    mode = Modes.TRAIN
+    mode = Modes.UPDATE
     versus = 9 # CPU lvl where 0 is human
-    return solver, mode, versus
+    plot_rewards = False
+    return solver, mode, versus, plot_rewards
 
 def run_test(agent):
     while True:
         agent.solver.run()
 
-def run_train(agent, episodes):
+def run_train(agent, episodes, plot_rewards):
     rewards = load_rewards(agent.mode)
     for i in range(episodes): # hardcoded episodes
         reward = agent.solver.train_episode(i)
@@ -22,7 +23,8 @@ def run_train(agent, episodes):
         print('\nEpisode', i, 'reward:', reward, '\n')
         rewards.append(reward)
         save_rewards(rewards)
-        plot(rewards, i+1==episodes)
+        if plot_rewards:
+            plot(rewards, i+1==episodes)
         agent.solver.save()
 
 def save_rewards(rewards, file_path='./src/agents/dqn/rewards.txt'):
@@ -38,7 +40,6 @@ def load_rewards(agent_mode, file_path='./src/agents/dqn/rewards.txt'):
                 lines = file.readlines()
                 rewards = [float(line.strip()) for line in lines]
                 print("Loading previous rewards")
-                plot(rewards)
         except FileNotFoundError:
             print("File not found. Returning empty rewards list.")
     
@@ -72,13 +73,13 @@ def plot(rewards, final=False, smooth_window=20):
         plt.pause(0.001)
 
 def main():
-    solver, mode, versus = get_args()
+    solver, mode, versus, plot_rewards = get_args()
     env = MeleeEnv(opponent=versus)
     agent = Agent(env, solver, mode)
     if mode == Modes.TEST:
         run_test(agent)
     else:
-        run_train(agent, 10000) # 10,000 episodes
+        run_train(agent, 10000, plot_rewards) # 10,000 episodes
 
 if __name__ == '__main__':
     main()
