@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 def get_args(): # TODO: argparser
-    solver = Solvers.DQN
-    mode = Modes.UPDATE
+    solver = Solvers.A3C
+    mode = Modes.TRAIN
     versus = 9 # CPU lvl where 0 is human
     plot_rewards = False
     return solver, mode, versus, plot_rewards

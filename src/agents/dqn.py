@@ -10,7 +10,7 @@ import math
 
 from torch.optim import AdamW
 
-class Hyperparameters:
+class DQNOptions:
     def __init__(self, alpha, gamma, epsilon, steps_per_episode, replay_memory_size, update_frequency, batch_size, layers):
         self.alpha = alpha
         self.gamma = gamma
@@ -44,7 +44,7 @@ class QFunction(nn.Module):
             x = F.relu(self.layers[i](x))
         return self.layers[-1](x).squeeze(dim=-1)
 
-class DQN():
+class DQN:
     def __init__(self, env, options):
         self.env = env
         self.options = options
@@ -161,10 +161,12 @@ class DQN():
     def train_episode(self):
         self.update_epsilon()
         state, _ = self.env.reset()
+        action = 24 # start with no-op
         total_reward = 0
         for step in range(self.options.steps_per_episode):
-            probs = self.epsilon_greedy(state)
-            action = np.random.choice(np.arange(len(probs)), p=probs)  
+            sampled_action = np.random.choice(np.arange(self.env.action_space.n), p=self.epsilon_greedy(state)) # try to input next action
+            if self.env.can_receive_action(): # only set new action if can receive new input
+                action = sampled_action
             next_state, reward, done, _, _ = self.env.step(action)
             total_reward += reward
             self.memorize(state, action, reward, next_state, done)
@@ -190,3 +192,8 @@ class DQN():
         probs = self.epsilon_greedy(state)
         action = np.random.choice(np.arange(len(probs)), p=probs)
         self.env.step(action)
+
+    # CHANGES
+    # Layers: 64, 64, 64
+    # Reward function tweaking
+    # Make action taken reflect action currently doing

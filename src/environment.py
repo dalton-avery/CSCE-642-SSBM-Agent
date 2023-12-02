@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
 
-    def __init__(self, opponent=9):
+    def __init__(self, opponent=7):
         super(MeleeEnv, self).__init__()
         load_dotenv(Path("./.env"))
         self.opponent = opponent
@@ -84,6 +84,10 @@ class MeleeEnv(gym.Env):
 
         self.prev_obs = None
         return self._get_flat_state(self._get_obs()), None
+
+    def can_receive_action(self):
+        agent = self.gamestate.players[self.agent_controller.port]
+        return self.framedata.attack_state(melee.Character.CPTFALCON, agent.action, agent.action_frame) == melee.enums.AttackState.NOT_ATTACKING
 
     def get_obs_shape(self):
         input_size = 0
@@ -185,10 +189,10 @@ class MeleeEnv(gym.Env):
             {'button': melee.enums.Button.BUTTON_B, 'main_stick': ANALOG_RIGHT}, # Right Special             | 13
 
             # Movement
-            {'button': None, 'main_stick': ANALOG_UP}, # Jump                                          | 14
-            {'button': None, 'main_stick': ANALOG_DOWN}, # Down                                        | 15
-            {'button': None, 'main_stick': ANALOG_LEFT}, # Left                                        | 16
-            {'button': None, 'main_stick': ANALOG_RIGHT}, # Right                                      | 17
+            {'button': None, 'main_stick': ANALOG_UP}, # Jump                                                | 14
+            {'button': None, 'main_stick': ANALOG_DOWN}, # Down                                              | 15
+            {'button': None, 'main_stick': ANALOG_LEFT}, # Left                                              | 16
+            {'button': None, 'main_stick': ANALOG_RIGHT}, # Right                                            | 17
 
             # Shield/Air Dodge/Roll
             {'button': melee.enums.Button.BUTTON_L, 'main_stick': ANALOG_NEUTRAL}, # Shield Neutral          | 18
@@ -198,10 +202,10 @@ class MeleeEnv(gym.Env):
             {'button': melee.enums.Button.BUTTON_L, 'main_stick': ANALOG_RIGHT}, # Shield Right              | 22
 
             # Grab
-            {'button': melee.Button.BUTTON_Z, 'main_stick': ANALOG_NEUTRAL}, # Grab                    | 23
+            {'button': melee.Button.BUTTON_Z, 'main_stick': ANALOG_NEUTRAL}, # Grab                          | 23
 
             # No Action
-            {'button': None, 'main_stick': ANALOG_NEUTRAL}, # No Action                                | 24
+            {'button': None, 'main_stick': ANALOG_NEUTRAL}, # No Action                                      | 24
         ]
 
     def _get_obs(self):
@@ -266,21 +270,21 @@ class MeleeEnv(gym.Env):
             # Observation data
             [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] # MINIMIZE
             [adversary_percent_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent'] # MAXIMIZE
-            agent_stage_dist = np.clip(abs(obs['position'][0]) - melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD], 0.0, 10.0) # MINIMIZE
-            adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD], 0.0, 10.0) # MAXIMIZE
+            agent_stage_dist = np.clip(abs(obs['position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MINIMIZE
+            adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MAXIMIZE
             agent_y_delta = np.clip(obs['position'][1] - self.prev_obs['position'][1], -5.0, 15.0)
-            agent_frame_count = self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0]))
+            agent_frame_count = np.clip(self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0])), 0.0, 50.0) # PENALIZE
             agent_curr_frame = obs['action'][1]
 
             # Multipliers
             hitstun_multiplier = 1.25 if obs['adversary_state_remainder'][2] > 1 else 1.0
-            recovery_multiplier = 1.0 if not obs['state'][2] else 0.0
+            cooldown_multiplier = 0.1
 
             # Sub rewards
             damage_reward = hitstun_multiplier * abs(adversary_percent_delta) - abs(agent_percent_delta) # their percent * multipliers - our percent
-            distance_reward = abs(adversary_stage_dist) - abs(agent_stage_dist) # abs(their distance from center) * offstage mult * 2.0 - abs(our distance from center) * offstage mult
-            offstage_reward = recovery_multiplier * agent_y_delta # increasing y if offstage
-            endlag_reward = -0.01 if agent_frame_count - agent_curr_frame > 0 else 0 # actions remaining
+            distance_reward = 0.2 * abs(adversary_stage_dist) - 0.2 * abs(agent_stage_dist) # abs(their distance from center) * offstage mult * 2.0 - abs(our distance from center) * offstage mult
+            offstage_reward = agent_y_delta if not obs['state'][2] else 0.0 # delta y reward if offstage
+            endlag_reward = -cooldown_multiplier * agent_frame_count if agent_curr_frame == 1 else 0.0 # punish on first frame for using moves with large animation frames
             
             # Main rewards
             stock_reward = 0
@@ -296,7 +300,12 @@ class MeleeEnv(gym.Env):
                 recovery_reward -= 10
             
             reward = damage_reward + distance_reward + offstage_reward + stock_reward + recovery_reward + endlag_reward
-            print(reward, ":", damage_reward, distance_reward, offstage_reward, stock_reward, recovery_reward, endlag_reward)
+            # print(reward, ":", damage_reward, distance_reward, offstage_reward, stock_reward, recovery_reward, endlag_reward)
+
+            # SIMPLIFY
+            # damage
+            # distance from edge of stage
+            # stocks
 
         self.prev_obs = obs
 
