@@ -43,6 +43,8 @@ class MeleeEnv(gym.Env):
 
         self.gamestate = self.console.step()
 
+        self.framedata = melee.framedata.FrameData()
+
         self.reset()
         
 
@@ -143,62 +145,6 @@ class MeleeEnv(gym.Env):
         self.agent_controller.release_all()
         self.adversary_controller.release_all()
 
-    def _get_obs(self):
-        agent = self.gamestate.players[self.agent_controller.port]
-        adversary = self.gamestate.players[self.adversary_controller.port]
-        
-        obs = {
-            'position': np.array([agent.position.x, agent.position.y]),
-            'shield_strength': np.array([agent.shield_strength]),
-            'percent': np.array([agent.percent]),
-            'speed': np.array(
-                [agent.speed_air_x_self,
-                agent.speed_ground_x_self,
-                agent.speed_y_self,
-                agent.speed_x_attack,
-                agent.speed_y_attack]
-            ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
-            'state':  np.array(
-                [agent.facing,
-                agent.on_ground,
-                agent.off_stage,
-                agent.invulnerable]
-            ), # facing, on_ground, on_stage, invulnerable
-            'state_remainder': np.array(
-                [agent.jumps_left,
-                agent.invulnerability_left,
-                agent.hitstun_frames_left]
-            ), # jumps_left, invulnerability_left, hitstun_frames_left
-            'stock': np.array([agent.stock]),
-            'action': np.array([agent.action.value, agent.action_frame]), # action_frame
-            
-            'adversary_position': np.array([adversary.position.x, adversary.position.y]),
-            'adversary_shield_strength': np.array([adversary.shield_strength]),
-            'adversary_percent': np.array([adversary.percent]),
-            'adversary_speed': np.array(
-                [adversary.speed_air_x_self,
-                adversary.speed_ground_x_self,
-                adversary.speed_y_self,
-                adversary.speed_x_attack,
-                adversary.speed_y_attack]
-            ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
-            'adversary_state':  np.array(
-                [adversary.facing,
-                adversary.on_ground,
-                adversary.off_stage,
-                adversary.invulnerable]
-            ), # facing, on_ground, on_stage, invulnerable
-            'adversary_state_remainder': np.array(
-                [adversary.jumps_left,
-                adversary.invulnerability_left,
-                adversary.hitstun_frames_left]
-            ), # jumps_left, invulnerability_left, hitstun_frames_left
-            'adversary_stock': np.array([adversary.stock]),
-            'adversary_action': np.array([adversary.action.value, adversary.action_frame]) # action_frame
-        }
-
-        return obs
-    
     def _define_actions(self):
         # 4 Smash/Aerial Attacks        (A + [Up, Down, Left, Right] main stick)  
         # 5 Tilt Attacks                (A or [Up, Down, Left, Right] slight main stick)
@@ -258,29 +204,101 @@ class MeleeEnv(gym.Env):
             {'button': None, 'main_stick': ANALOG_NEUTRAL}, # No Action                                | 24
         ]
 
+    def _get_obs(self):
+        agent = self.gamestate.players[self.agent_controller.port]
+        adversary = self.gamestate.players[self.adversary_controller.port]
+        
+        obs = {
+            'position': np.array([agent.position.x, agent.position.y]),
+            'shield_strength': np.array([agent.shield_strength]),
+            'percent': np.array([agent.percent]),
+            'speed': np.array(
+                [agent.speed_air_x_self,
+                agent.speed_ground_x_self,
+                agent.speed_y_self,
+                agent.speed_x_attack,
+                agent.speed_y_attack]
+            ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
+            'state':  np.array(
+                [agent.facing,
+                agent.on_ground,
+                agent.off_stage,
+                agent.invulnerable]
+            ), # facing, on_ground, on_stage, invulnerable
+            'state_remainder': np.array(
+                [agent.jumps_left,
+                agent.invulnerability_left,
+                agent.hitstun_frames_left]
+            ), # jumps_left, invulnerability_left, hitstun_frames_left
+            'stock': np.array([agent.stock]),
+            'action': np.array([agent.action.value, agent.action_frame]), # action_frame
+            
+            'adversary_position': np.array([adversary.position.x, adversary.position.y]),
+            'adversary_shield_strength': np.array([adversary.shield_strength]),
+            'adversary_percent': np.array([adversary.percent]),
+            'adversary_speed': np.array(
+                [adversary.speed_air_x_self,
+                adversary.speed_ground_x_self,
+                adversary.speed_y_self,
+                adversary.speed_x_attack,
+                adversary.speed_y_attack]
+            ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
+            'adversary_state':  np.array(
+                [adversary.facing,
+                adversary.on_ground,
+                adversary.off_stage,
+                adversary.invulnerable]
+            ), # facing, on_ground, on_stage, invulnerable
+            'adversary_state_remainder': np.array(
+                [adversary.jumps_left,
+                adversary.invulnerability_left,
+                adversary.hitstun_frames_left]
+            ), # jumps_left, invulnerability_left, hitstun_frames_left
+            'adversary_stock': np.array([adversary.stock]),
+            'adversary_action': np.array([adversary.action.value, adversary.action_frame]) # action_frame
+        }
+
+        return obs
+
     def _calc_reward(self, obs):
         reward = 0
         if self.prev_obs is not None and self.gamestate.menu_state == melee.Menu.IN_GAME:
-            [agent_delta] = obs['percent'] - self.prev_obs['percent']
-            [adver_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent']
-            prev_off_stage = self.prev_obs['state'][2]
-            curr_off_stage = obs['state'][2]
+            # Observation data
+            [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] # MINIMIZE
+            [adversary_percent_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent'] # MAXIMIZE
+            agent_stage_dist = np.clip(abs(obs['position'][0]) - melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD], 0.0, 10.0) # MINIMIZE
+            adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD], 0.0, 10.0) # MAXIMIZE
+            agent_y_delta = np.clip(obs['position'][1] - self.prev_obs['position'][1], -5.0, 15.0)
+            agent_frame_count = self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0]))
+            agent_curr_frame = obs['action'][1]
 
-            if self.prev_obs['adversary_stock'] == obs['adversary_stock'] and self.prev_obs['stock'] == obs['stock']:
-                reward += abs(adver_delta) - abs(agent_delta)
+            # Multipliers
+            hitstun_multiplier = 1.25 if obs['adversary_state_remainder'][2] > 1 else 1.0
+            recovery_multiplier = 1.0 if not obs['state'][2] else 0.0
 
-            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                reward += 250
-
-            if self.prev_obs['stock'] > obs['stock']:
-                reward -= 250
+            # Sub rewards
+            damage_reward = hitstun_multiplier * abs(adversary_percent_delta) - abs(agent_percent_delta) # their percent * multipliers - our percent
+            distance_reward = abs(adversary_stage_dist) - abs(agent_stage_dist) # abs(their distance from center) * offstage mult * 2.0 - abs(our distance from center) * offstage mult
+            offstage_reward = recovery_multiplier * agent_y_delta # increasing y if offstage
+            endlag_reward = -0.01 if agent_frame_count - agent_curr_frame > 0 else 0 # actions remaining
             
-            if curr_off_stage:
-                reward -= 1
+            # Main rewards
+            stock_reward = 0
+            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
+                stock_reward += 500
+            if self.prev_obs['stock'] > obs['stock']:
+                stock_reward -= 500
+            
+            recovery_reward = 0 # + 10 for making back on stage (-5 for letting enemy back on stage?)
+            if not obs['state'][2] and self.prev_obs['state'][2]:
+                recovery_reward += 25
+            if not obs['adversary_state'][2] and self.prev_obs['adversary_state'][2]:
+                recovery_reward -= 10
+            
+            reward = damage_reward + distance_reward + offstage_reward + stock_reward + recovery_reward + endlag_reward
+            print(reward, ":", damage_reward, distance_reward, offstage_reward, stock_reward, recovery_reward, endlag_reward)
 
         self.prev_obs = obs
-        if round(reward) != 0:
-            print(round(reward))
 
         return reward
 
