@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import math
 
 from torch.optim import AdamW
 
@@ -69,6 +70,9 @@ class DQN():
         # Replay buffer
         self.replay_memory = deque(maxlen=self.options.replay_memory_size)
 
+        # Number of episodes
+        self.episodes = 0
+
         # Number of training steps so far
         self.n_steps = 0
     
@@ -83,6 +87,9 @@ class DQN():
 
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
+
+    def update_epsilon(self):
+        self.options.epsilon = math.e**(-0.001 * self.episodes)
 
     def epsilon_greedy(self, state):
         nA = self.env.action_space.n
@@ -151,11 +158,10 @@ class DQN():
     def memorize(self, state, action, reward, next_state, done):
         self.replay_memory.append((state, action, reward, next_state, done))
     
-    def train_episode(self, i):
+    def train_episode(self):
+        self.update_epsilon()
         state, _ = self.env.reset()
-
         total_reward = 0
-
         for step in range(self.options.steps_per_episode):
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
@@ -168,7 +174,7 @@ class DQN():
                 self.update_target_model()
             if done:
                 break
-        
+        self.episodes += 1
         return total_reward
     
     def create_greedy_policy(self):

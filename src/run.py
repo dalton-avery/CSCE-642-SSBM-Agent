@@ -17,7 +17,7 @@ def run_test(agent):
 def run_train(agent, episodes, plot_rewards):
     rewards = load_rewards(agent.mode)
     for i in range(episodes): # hardcoded episodes
-        reward = agent.solver.train_episode(i)
+        reward = agent.solver.train_episode()
         if not reward:
             continue
         print('\nEpisode', i, 'reward:', reward, '\n')
