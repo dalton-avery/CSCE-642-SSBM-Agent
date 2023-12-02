@@ -8,6 +8,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
+
+    # class Player:
+    #     def __init__(self, port, cpu_level, playable=False):
+    #         self.port = port
+    #         self.cpu_level = cpu_level
+    #         self.playable = playable
+    #         self.controller = None
     
     def __init__(self, opponent=9):
         super(MeleeEnv, self).__init__()
@@ -49,7 +56,7 @@ class MeleeEnv(gym.Env):
     def step(self, action):
         assert self.action_space.contains(action)
         self.gamestate = self.console.step()
-        self._take_action(self.controller1, action)
+        self._take_action(self.agent_controller, action)
         obs = self._get_obs()
         reward = self._calc_reward(obs)
         done = self.gamestate.menu_state != melee.Menu.IN_GAME # this may not work
@@ -57,34 +64,29 @@ class MeleeEnv(gym.Env):
         return self._get_flat_state(obs), reward, done, False, {}
 
     def reset(self):
+        self._clear_inputs()
         while self.gamestate.menu_state != melee.Menu.IN_GAME:
             self.gamestate = self.console.step()
+
             if self.gamestate is None:
                 continue
 
-            melee.MenuHelper.menu_helper_simple(
-                gamestate=self.gamestate,
-                controller=self.controller1,
-                character_selected=melee.Character.CPTFALCON,
-                stage_selected=melee.Stage.BATTLEFIELD,
-                connect_code="",
-                cpu_level=0,
-                costume=0,
-                autostart=self.opponent, # false if hmn
-                swag=False
-            )
+            # Get to character select
+            melee.menuhelper.MenuHelper.choose_versus_mode(gamestate=self.gamestate, controller=self.agent_controller)
+            
+            # Select characters
+            if (self.gamestate.menu_state in [melee.enums.Menu.CHARACTER_SELECT]):
+                self._clear_inputs()
+                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
+                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.agent_controller, cpu_level=0, costume=2, swag=False, start=False)
+                if (self.gamestate.players[self.adversary_controller.port].cpu_level == self.opponent): # ready to start
+                    melee.menuhelper.MenuHelper.skip_postgame(controller=self.agent_controller, gamestate=self.gamestate) # spam start
+            
+            # Select stage
+            elif (self.gamestate.menu_state in [melee.enums.Menu.STAGE_SELECT]):
+                self._clear_inputs()
+                melee.menuhelper.MenuHelper.choose_stage(gamestate=self.gamestate, controller=self.agent_controller, stage=melee.enums.Stage.BATTLEFIELD)
 
-            melee.MenuHelper.menu_helper_simple(
-                gamestate=self.gamestate,
-                controller=self.controller2,
-                character_selected=melee.Character.DK,
-                stage_selected=melee.Stage.BATTLEFIELD,
-                connect_code="",
-                cpu_level=self.opponent,
-                costume=0,
-                autostart=self.opponent, # false if hmn
-                swag=False
-            )
         self.prev_obs = None
         return self._get_flat_state(self._get_obs()), None
 
@@ -115,16 +117,16 @@ class MeleeEnv(gym.Env):
             fullscreen=False
         )
 
-        self.controller1 = melee.controller.Controller(
+        self.adversary_controller = melee.controller.Controller(
             self.console,
             port=1,
             type=melee.ControllerType.STANDARD
         )
 
-        self.controller2 = melee.controller.Controller(
+        self.agent_controller = melee.controller.Controller(
             self.console,
-            port=2,
-            type=melee.ControllerType.GCN_ADAPTER if self.opponent == 0 else melee.ControllerType.STANDARD
+            port=2 if self.opponent != 0 else 4,
+            type=melee.ControllerType.STANDARD if self.opponent != 0 else melee.ControllerType.GCN_ADAPTER
         )
 
         self.console.run(iso_path=ISO_PATH)
@@ -135,20 +137,24 @@ class MeleeEnv(gym.Env):
         print("Console connected")
 
         print("Connecting controllers to console...")
-        if not self.controller1.connect() or not self.controller2.connect():
+        if not self.adversary_controller.connect() or not self.agent_controller.connect():
             print("ERROR: Failed to connect the controllers.")
             sys.exit(-1)
         print("Controllers connected")
 
     def _take_action(self, controller, action):
+        controller.release_all()
         if self.action_map[action]['button'] is not None:
-            controller.release_all()
             controller.press_button(self.action_map[action]['button'])
         controller.tilt_analog(melee.Button.BUTTON_MAIN, self.action_map[action]['main_stick'][0], self.action_map[action]['main_stick'][1])
 
+    def _clear_inputs(self):
+        self.agent_controller.release_all()
+        self.adversary_controller.release_all()
+
     def _get_obs(self):
-        agent = self.gamestate.players[1]
-        adversary = self.gamestate.players[2] if self.opponent != 0 else self.gamestate.players[4]
+        agent = self.gamestate.players[self.agent_controller.port]
+        adversary = self.gamestate.players[self.adversary_controller.port]
         
         obs = {
             'position': np.array([agent.position.x, agent.position.y]),
@@ -290,3 +296,4 @@ class MeleeEnv(gym.Env):
     def skip_episode(self):
         while self.gamestate.menu_state == melee.Menu.IN_GAME:
             self.step(16)
+

@@ -156,10 +156,6 @@ class DQN():
 
         total_reward = 0
 
-        if i==0:
-            self.env.skip_episode()
-            return
-
         for step in range(self.options.steps_per_episode):
             probs = self.epsilon_greedy(state)
             action = np.random.choice(np.arange(len(probs)), p=probs)  
