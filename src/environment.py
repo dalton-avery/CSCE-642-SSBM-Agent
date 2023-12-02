@@ -273,10 +273,10 @@ class MeleeEnv(gym.Env):
                 reward += abs(adver_delta) - abs(agent_delta)
 
             if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                reward += 1000
+                reward += 250
 
             if self.prev_obs['stock'] > obs['stock']:
-                reward -= 1000
+                reward -= 250
             
             if curr_off_stage:
                 reward -= 1

@@ -77,6 +77,7 @@ class DQN():
         torch.save(self.target_model, "./src/agents/dqn/target_model.pt")
 
     def load(self):
+        print('Loading previous models')
         self.model = torch.load("./src/agents/dqn/model.pt")
         self.target_model = torch.load("./src/agents/dqn/target_model.pt")
 
