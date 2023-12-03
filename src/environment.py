@@ -9,14 +9,12 @@ from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
 
-    def __init__(self, opponent=7):
+    def __init__(self, opponent=7, port=51441):
         super(MeleeEnv, self).__init__()
         load_dotenv(Path("./.env"))
         self.opponent = opponent
+        self.port = port
         
-        # Connect to emulator and run melee
-        self._setup()
-
         self._define_actions()
 
         self.action_space = gym.spaces.Discrete(25)
@@ -41,11 +39,8 @@ class MeleeEnv(gym.Env):
             'adversary_action': gym.spaces.Discrete(2) # action_frame
         })
 
-        self.gamestate = self.console.step()
-
+        self.gamestate = None
         self.framedata = melee.framedata.FrameData()
-
-        self.reset()
         
 
     def step(self, action):
@@ -59,6 +54,8 @@ class MeleeEnv(gym.Env):
         return self._get_flat_state(obs), reward, done, False, {}
 
     def reset(self):
+        if not self.gamestate: self._setup(self.port)
+        self.gamestate = self.console.step()
         self._clear_inputs()
         while self.gamestate.menu_state != melee.Menu.IN_GAME:
             self.gamestate = self.console.step()
@@ -107,13 +104,16 @@ class MeleeEnv(gym.Env):
                 flat_state.append(val)
         return np.array(flat_state, dtype=np.float32)
 
-    def _setup(self):
+    def _setup(self, port):
         ISO_PATH = os.getenv('ISO_PATH')
         SLIPPI_PATH = os.getenv('SLIPPI_PATH')
 
         self.console = melee.console.Console(
             path=SLIPPI_PATH,
-            fullscreen=False
+            fullscreen=False,
+            online_delay=0,
+            slippi_port=port,
+            blocking_input=True
         )
 
         self.adversary_controller = melee.controller.Controller(
@@ -127,6 +127,8 @@ class MeleeEnv(gym.Env):
             port=2 if self.opponent != 0 else 4,
             type=melee.ControllerType.STANDARD if self.opponent != 0 else melee.ControllerType.GCN_ADAPTER
         )
+
+        print(f"Attemping to connect on port {port}")
 
         self.console.run(iso_path=ISO_PATH)
         if not self.console.connect():
