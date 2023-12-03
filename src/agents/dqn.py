@@ -10,17 +10,6 @@ import math
 
 from torch.optim import AdamW
 
-class DQNOptions:
-    def __init__(self, alpha, gamma, epsilon, steps_per_episode, replay_memory_size, update_frequency, batch_size, layers):
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epsilon = epsilon
-        self.steps_per_episode = steps_per_episode
-        self.replay_memory_size = replay_memory_size
-        self.update_frequency = update_frequency
-        self.batch_size = batch_size
-        self.layers = layers
-
 class QFunction(nn.Module):
     """
     Q-network definition.
@@ -46,12 +35,12 @@ class QFunction(nn.Module):
 
 class DQN:
     def __init__(self, env, options):
-        self.env = env
+        self.env = env(options.versus)
         self.options = options
         # Create Q-network
         self.model = QFunction(
-            env.get_obs_shape(),
-            env.action_space.n,
+            self.env.get_obs_shape(),
+            self.env.action_space.n,
             self.options.layers,
         )
         # Create target Q-network
