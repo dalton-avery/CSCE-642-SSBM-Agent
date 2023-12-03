@@ -15,7 +15,7 @@ class GlobAdam(torch.optim.Adam):
         for group in self.param_groups:
             for p in group['params']:
                 state = self.state[p]
-                state['step'] = 0
+                state['step'] = torch.zeros(1)
                 state['exp_avg'] = torch.zeros_like(p.data)
                 state['exp_avg_sq'] = torch.zeros_like(p.data)
 
@@ -54,7 +54,7 @@ class ActorCriticNetwork(nn.Module):
         td = target_values - values
         critic_loss = td.pow(2)
 
-        m = self.distribution(probs)
+        m = torch.distributions.Categorical(probs)
         exp_v = m.log_prob(actions) * td.detach().squeeze()
         actor_loss = -exp_v
         total_loss = (critic_loss + actor_loss).mean()
@@ -72,8 +72,9 @@ class A3CWorker(mp.Process):
         self.global_net = global_net
 
     def run(self):
-        self.env = MeleeEnv(self.options.versus, port=51441+self.id, id=self.id)
+        self.env = MeleeEnv(self.options.versus, port=51441+self.id)
         self.local_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
+        reward_hist = []
         while self.global_episodes.value < self.options.episodes:
             # TODO: reset gradients dTheta nad dTheta_v to 0
             state, _ = self.env.reset()    
@@ -85,6 +86,7 @@ class A3CWorker(mp.Process):
                 sampled_action = self.choose_action(state)
                 if self.env.can_receive_action(): # only set new action if can receive new input
                     action = sampled_action
+                print(f'Process {self.id} action: {action}')
                 next_state, reward, done, _, _ = self.env.step(action)
                 episode_reward += reward
                 buffer_s.append(state)
@@ -93,7 +95,7 @@ class A3CWorker(mp.Process):
                 if step_count % self.options.update_frequency == 0 or done:
                     self.updateNetworks(self.local_net, self.global_net, next_state, done, buffer_s, buffer_a, buffer_r)
                     buffer_s, buffer_a, buffer_r = [], [], []
-
+                    print('Episode:', self.global_episodes.value, 'Step:', step_count, 'Reward:', episode_reward, '\n')
                     if done:
                         with self.global_episodes.get_lock():
                             self.global_episodes.value += 1
@@ -101,29 +103,25 @@ class A3CWorker(mp.Process):
 
                 state=next_state
                 step_count += 1
+            reward_hist.append(episode_reward)
+            self.save_rewards(reward_hist, f'./src/agents/a3c/rewards-{self.id}.txt')
 
     def choose_action(self, state):
         state = torch.as_tensor(state, dtype=torch.float32)
         probs, value = self.local_net(state)
-        print(f'Probs for {self.id}',torch.argmax(probs))
         probs_np = probs.detach().numpy()
         action = np.random.choice(len(probs_np), p=probs_np)
-        print(f'Action for {self.id}', action)
         return action
     
     def updateNetworks(self, local_net, global_net, next_state, done, buffer_s, buffer_a, buffer_r):
         # UPDATE LOCAL NETWORKS
-        R = 0 if done else local_net.forward(torch.from_numpy(next_state))[-1]
+        R = torch.as_tensor(0) if done else local_net.forward(torch.from_numpy(next_state))[-1]
 
         buffer_r_tar = []
         for r in buffer_r[::-1]:
             R = r + self.options.gamma * R
-            buffer_r_tar.append(R)
+            buffer_r_tar.append(R.detach())
         buffer_r_tar.reverse()
-
-        print('1: ', torch.cat(buffer_r_tar).detach().numpy())
-        print('2: ', np.array(buffer_r_tar)[:, None])
-        print('3: ', torch.from_numpy(np.array(buffer_r_tar)[:, None]))
 
         loss = local_net.loss_func(
         torch.from_numpy(np.vstack(buffer_s)),
@@ -139,16 +137,20 @@ class A3CWorker(mp.Process):
 
         # PULL GLOBAL INTO LOCAL
         local_net.load_state_dict(global_net.state_dict())
+
+    def save_rewards(self, rewards, file_path='./src/agents/a3c/rewards.txt'):
+        with open(file_path, 'w') as file:
+            for reward in rewards:
+                file.write(str(reward) + '\n')
     
 
 
 
 class A3C:
     def __init__(self, options):
-        mp.set_start_method("fork") # TODO: See if works without it on windows
+        mp.set_start_method("spawn") # TODO: See if works without it on windows
         self.env = MeleeEnv(options.versus)
         self.options = options
-
 
         self.global_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
         self.global_net.share_memory()
@@ -157,10 +159,12 @@ class A3C:
 
         self.global_episodes = mp.Value('i', 0)
 
-        self.workers = [A3CWorker(self.options, id, self.global_episodes, self.global_adam, self.global_net) for id in range(options.num_workers)]
-
-
 
     def start_workers(self):
         # Define Global params for Policy(actor) and Value(critic) networks
+        self.workers = [A3CWorker(self.options, id, self.global_episodes, self.global_adam, self.global_net) for id in range(self.options.num_workers)]
         [worker.start() for worker in self.workers]
+        [worker.join() for worker in self.workers]
+
+    def save(self):
+        torch.save(self.target_model, "./src/agents/a3c/global.pt")

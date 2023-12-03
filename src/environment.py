@@ -9,12 +9,11 @@ from dotenv import load_dotenv
 
 class MeleeEnv(gym.Env):
 
-    def __init__(self, opponent=7, port=51441, id = 0):
+    def __init__(self, opponent=7, port=51441):
         super(MeleeEnv, self).__init__()
         load_dotenv(Path("./.env"))
         self.opponent = opponent
         self.port = port
-        self.id = id
         
         self._define_actions()
 
@@ -70,9 +69,9 @@ class MeleeEnv(gym.Env):
             # Select characters
             if (self.gamestate.menu_state in [melee.enums.Menu.CHARACTER_SELECT]):
                 self._clear_inputs()
-                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent-self.id, costume=1, swag=False, start=False)
+                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
                 melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.agent_controller, cpu_level=0, costume=2, swag=False, start=False)
-                if (self.gamestate.players[self.adversary_controller.port].cpu_level == self.opponent-self.id): # ready to start
+                if (self.gamestate.players[self.adversary_controller.port].cpu_level == self.opponent): # ready to start
                     melee.menuhelper.MenuHelper.skip_postgame(controller=self.agent_controller, gamestate=self.gamestate) # spam start
             
             # Select stage
