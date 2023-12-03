@@ -269,44 +269,60 @@ class MeleeEnv(gym.Env):
     def _calc_reward(self, obs):
         reward = 0
         if self.prev_obs is not None and self.gamestate.menu_state == melee.Menu.IN_GAME:
-            # Observation data
-            [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] # MINIMIZE
-            [adversary_percent_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent'] # MAXIMIZE
-            agent_stage_dist = np.clip(abs(obs['position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MINIMIZE
-            adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MAXIMIZE
-            agent_y_delta = np.clip(obs['position'][1] - self.prev_obs['position'][1], -5.0, 15.0)
-            agent_frame_count = np.clip(self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0])), 0.0, 50.0) # PENALIZE
-            agent_curr_frame = obs['action'][1]
+            # # Observation data
+            # [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] # MINIMIZE
+            # [adversary_percent_delta] = obs['adversary_percent'] - self.prev_obs['adversary_percent'] # MAXIMIZE
+            # agent_stage_dist = np.clip(abs(obs['position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MINIMIZE
+            # adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MAXIMIZE
+            # agent_y_delta = np.clip(obs['position'][1] - self.prev_obs['position'][1], -5.0, 15.0)
+            # agent_frame_count = np.clip(self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0])), 0.0, 50.0) # PENALIZE
+            # agent_curr_frame = obs['action'][1]
 
-            # Multipliers
-            hitstun_multiplier = 1.25 if obs['adversary_state_remainder'][2] > 1 else 1.0
-            cooldown_multiplier = 0.1
+            # # Multipliers
+            # hitstun_multiplier = 1.25 if obs['adversary_state_remainder'][2] > 1 else 1.0
+            # cooldown_multiplier = 0.1
 
-            # Sub rewards
-            damage_reward = hitstun_multiplier * abs(adversary_percent_delta) - abs(agent_percent_delta) # their percent * multipliers - our percent
-            distance_reward = 0.2 * abs(adversary_stage_dist) - 0.2 * abs(agent_stage_dist) # abs(their distance from center) * offstage mult * 2.0 - abs(our distance from center) * offstage mult
-            offstage_reward = agent_y_delta if not obs['state'][2] else 0.0 # delta y reward if offstage
-            endlag_reward = -cooldown_multiplier * agent_frame_count if agent_curr_frame == 1 else 0.0 # punish on first frame for using moves with large animation frames
+            # # Sub rewards
+            # damage_reward = hitstun_multiplier * abs(adversary_percent_delta) - abs(agent_percent_delta) # their percent * multipliers - our percent
+            # distance_reward = 0.2 * abs(adversary_stage_dist) - 0.2 * abs(agent_stage_dist) # abs(their distance from center) * offstage mult * 2.0 - abs(our distance from center) * offstage mult
+            # offstage_reward = agent_y_delta if obs['state'][2] else 0.0 # delta y reward if offstage
+            # endlag_reward = -cooldown_multiplier * agent_frame_count if agent_curr_frame == 1 else 0.0 # punish on first frame for using moves with large animation frames
             
-            # Main rewards
-            stock_reward = 0
-            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
-                stock_reward += 500
-            if self.prev_obs['stock'] > obs['stock']:
-                stock_reward -= 500
+            # # Main rewards
+            # stock_reward = 0
+            # if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
+            #     stock_reward += 500
+            # if self.prev_obs['stock'] > obs['stock']:
+            #     stock_reward -= 500
             
-            recovery_reward = 0 # + 10 for making back on stage (-5 for letting enemy back on stage?)
-            if not obs['state'][2] and self.prev_obs['state'][2]:
-                recovery_reward += 25
-            if not obs['adversary_state'][2] and self.prev_obs['adversary_state'][2]:
-                recovery_reward -= 10
+            # recovery_reward = 0 # + 10 for making back on stage (-5 for letting enemy back on stage?)
+            # if not obs['state'][2] and self.prev_obs['state'][2]:
+            #     recovery_reward += 25
+            # if not obs['adversary_state'][2] and self.prev_obs['adversary_state'][2]:
+            #     recovery_reward -= 10
             
-            reward = damage_reward + distance_reward + offstage_reward + stock_reward + recovery_reward + endlag_reward
+            # reward = damage_reward + distance_reward + offstage_reward + stock_reward + recovery_reward + endlag_reward
 
             # SIMPLIFY
             # damage
-            # distance from edge of stage
+            const_p = 1/300
+            [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] 
+            [adversary_percent_delta] = (obs['adversary_percent'] - self.prev_obs['adversary_percent'])
+            damage_reward = const_p * (adversary_percent_delta - agent_percent_delta)
+
+            # get back on stage
+            recovery_reward = 0
+            if not obs['state'][2] and self.prev_obs['state'][2]:
+                recovery_reward = 0.02
+
             # stocks
+            stock_reward = 0
+            if self.prev_obs['adversary_stock'] > obs['adversary_stock']:
+                stock_reward += 1
+            if self.prev_obs['stock'] > obs['stock']:
+                stock_reward -= 1
+
+            reward = damage_reward + recovery_reward + stock_reward
 
         self.prev_obs = obs
 

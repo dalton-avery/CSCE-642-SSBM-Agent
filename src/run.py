@@ -10,7 +10,6 @@ def run_test(agent):
 
 def run_train(agent, episodes):
     rewards = load_rewards(agent.mode)
-    print(agent.solverType)
     if agent.solverType == Solvers.DQN:
         for i in range(episodes): # hardcoded episodes
             reward = agent.solver.train_episode()
