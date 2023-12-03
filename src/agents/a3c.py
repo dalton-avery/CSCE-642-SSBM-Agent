@@ -81,11 +81,18 @@ class A3CWorker(mp.Process):
             episode_reward = 0
             step_count = 1
             while self.options.steps_per_episode:    
+                forced_noop = False
                 sampled_action = self.choose_action(state)
                 if self.env.can_receive_action(): # only set new action if can receive new input
                     action = sampled_action
-                # print(f'Process {self.id} action: {action}')
+                else:
+                    action = 24 # no op
+                    forced_noop = True
+                print(f'Process {self.id} action: {action}')
                 next_state, reward, done, _, _ = self.env.step(action)
+                if forced_noop:
+                    state=next_state
+                    continue
                 episode_reward += reward
                 buffer_s.append(state)
                 buffer_a.append(action)

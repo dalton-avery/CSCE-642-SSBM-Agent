@@ -302,7 +302,6 @@ class MeleeEnv(gym.Env):
                 recovery_reward -= 10
             
             reward = damage_reward + distance_reward + offstage_reward + stock_reward + recovery_reward + endlag_reward
-            # print(reward, ":", damage_reward, distance_reward, offstage_reward, stock_reward, recovery_reward, endlag_reward)
 
             # SIMPLIFY
             # damage
