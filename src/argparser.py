@@ -14,7 +14,7 @@ class Modes(Enum):
 def parseArgs():
     parser = argparse.ArgumentParser(description='Example of libmelee in action')
 
-    parser.add_argument('--alpha', '-a', default=0.01, type=float, help='Alpha value (learning rate)')
+    parser.add_argument('--alpha', '-a', default=0.001, type=float, help='Alpha value (learning rate)')
     parser.add_argument('--gamma', '-g', default=0.95, type=float, help='Gamme value (discount factor)')
     parser.add_argument('--epsilon', '-e', default=0.01, type=float, help='Epsilon (exploration rate)')
     parser.add_argument('--episodes', '-ep', default=5000, type=int, help='Episodes to train')
@@ -25,7 +25,7 @@ def parseArgs():
     parser.add_argument('--layers', '-l', default=[128,128], help='Layer size for model')
     parser.add_argument('--solver', '-s', default='a3c', help='Choose learning agent (dqn or a3c)')
     parser.add_argument('--mode', '-m', default='train', help='Choose training mode (train, update, test)')
-    parser.add_argument('--versus', '-v', default=9, help='The level of cpu to train against (0 for human)')
+    parser.add_argument('--versus', '-v', default=7, help='The level of cpu to train against (0 for human)')
     parser.add_argument('--num_workers', '-n', default=4, type=int, help='The number of workers for multiagent solvers (A3C)')
     
 
