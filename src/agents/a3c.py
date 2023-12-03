@@ -76,9 +76,7 @@ class A3CWorker(mp.Process):
         self.local_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
         reward_hist = []
         while self.global_episodes.value < self.options.episodes:
-            # TODO: reset gradients dTheta nad dTheta_v to 0
             state, _ = self.env.reset()    
-            # TODO: update local params with global params
             buffer_s, buffer_a, buffer_r = [], [], []
             episode_reward = 0
             step_count = 1
@@ -86,7 +84,7 @@ class A3CWorker(mp.Process):
                 sampled_action = self.choose_action(state)
                 if self.env.can_receive_action(): # only set new action if can receive new input
                     action = sampled_action
-                print(f'Process {self.id} action: {action}')
+                # print(f'Process {self.id} action: {action}')
                 next_state, reward, done, _, _ = self.env.step(action)
                 episode_reward += reward
                 buffer_s.append(state)
@@ -104,6 +102,8 @@ class A3CWorker(mp.Process):
                 state=next_state
                 step_count += 1
             reward_hist.append(episode_reward)
+            
+            torch.save(self.global_net, "./src/agents/a3c/global.pt")
             self.save_rewards(reward_hist, f'./src/agents/a3c/rewards-{self.id}.txt')
 
     def choose_action(self, state):
@@ -142,8 +142,6 @@ class A3CWorker(mp.Process):
         with open(file_path, 'w') as file:
             for reward in rewards:
                 file.write(str(reward) + '\n')
-    
-
 
 
 class A3C:
@@ -165,6 +163,3 @@ class A3C:
         self.workers = [A3CWorker(self.options, id, self.global_episodes, self.global_adam, self.global_net) for id in range(self.options.num_workers)]
         [worker.start() for worker in self.workers]
         [worker.join() for worker in self.workers]
-
-    def save(self):
-        torch.save(self.target_model, "./src/agents/a3c/global.pt")

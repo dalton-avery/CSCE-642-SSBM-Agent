@@ -22,7 +22,7 @@ def parseArgs():
     parser.add_argument('--replay_memory_size', '-rs', default=2000, type=int, help='Replay Memory Size')
     parser.add_argument('--update_frequency', '-uf', default=10001, type=int, help='Fequency to update model (exclude for per episode)')
     parser.add_argument('--batch_size', '-b', default=32, type=int, help='Batch Size for learning')
-    parser.add_argument('--layers', '-l', default=[64,64,64], help='Layer size for model')
+    parser.add_argument('--layers', '-l', default=[128,128], help='Layer size for model')
     parser.add_argument('--solver', '-s', default='a3c', help='Choose learning agent (dqn or a3c)')
     parser.add_argument('--mode', '-m', default='train', help='Choose training mode (train, update, test)')
     parser.add_argument('--versus', '-v', default=9, help='The level of cpu to train against (0 for human)')
