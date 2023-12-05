@@ -20,30 +20,30 @@ class MeleeEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(25)
 
         self.observation_space = gym.spaces.Dict({
-            'position': gym.spaces.Box(low=-10000, high=10000, shape=(2,), dtype=np.float32), # GET MIN AND MAX VALUES FROM LIB MELEE
-            'shield_strength': gym.spaces.Box(low=0, high=60, shape=(1,), dtype=np.float32),
-            'percent': gym.spaces.Box(low=0, high=500, shape=(1,), dtype=np.float32),
-            'speed': gym.spaces.Box(low=-10000, high=10000, shape=(5,), dtype=np.float32),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
-            'state':  gym.spaces.MultiBinary(4), # facing, on_ground, on_stage, invulnerable
-            'state_remainder': gym.spaces.Discrete(3), # jumps_left, invulnerable_left, hitstun_frames_left
-            'stock': gym.spaces.Discrete(1),
-            'action': gym.spaces.Discrete(2), # action_frame
+            'position': gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.float32), # GET MIN AND MAX VALUES FROM LIB MELEE
+            'shield_strength': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'percent': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'speed': gym.spaces.Box(low=0, high=1, shape=(5,), dtype=np.float32),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
+            'state':  gym.spaces.MultiBinary(3), # facing, on_ground, on_stage
+            'state_remainder': gym.spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32), # jumps_left, invulnerable_left, hitstun_frames_left
+            'stock': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'action': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32), # action_frame
 
-            'adversary_position': gym.spaces.Box(low=-10000, high=10000, shape=(2,), dtype=np.float32), # GET MIN AND MAX VALUES FROM LIB MELEE
-            'adversary_shield_strength': gym.spaces.Box(low=0, high=60, shape=(1,), dtype=np.float32),
-            'adversary_percent': gym.spaces.Box(low=0, high=500, shape=(1,), dtype=np.float32),
-            'adversary_speed': gym.spaces.Box(low=-10000, high=10000, shape=(5,), dtype=np.float32),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
-            'adversary_state':  gym.spaces.MultiBinary(4), # facing, on_ground, on_stage, invulnerable
-            'adversary_state_remainder': gym.spaces.Discrete(3), # jumps_left, invulnerable_left, hitstun_frames_left
-            'adversary_stock': gym.spaces.Discrete(1),
-            'adversary_action': gym.spaces.Discrete(2) # action_frame
+            'adversary_position': gym.spaces.Box(low=0, high=1, shape=(2,), dtype=np.float32), # GET MIN AND MAX VALUES FROM LIB MELEE
+            'adversary_shield_strength': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'adversary_percent': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'adversary_speed': gym.spaces.Box(low=0, high=1, shape=(5,), dtype=np.float32),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
+            'adversary_state':  gym.spaces.MultiBinary(3), # facing, on_ground, on_stage
+            'adversary_state_remainder': gym.spaces.Box(low=0, high=1, shape=(3,), dtype=np.float32), # jumps_left, invulnerable_left, hitstun_frames_left
+            'adversary_stock': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            'adversary_action': gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32) # action_frame
         })
 
         self.portToCharacterMap = {
-            51441: melee.Character.CPTFALCON,
-            51442: melee.Character.MARTH,
+            51441: melee.Character.ROY,
+            51442: melee.Character.ROY,
             51443: melee.Character.ROY,
-            51444: melee.Character.GANONDORF
+            51444: melee.Character.ROY
         }
 
         self.gamestate = None
@@ -76,22 +76,22 @@ class MeleeEnv(gym.Env):
             # Select characters
             if (self.gamestate.menu_state in [melee.enums.Menu.CHARACTER_SELECT]):
                 self._clear_inputs()
-                melee.menuhelper.MenuHelper.choose_character(character=self.portToCharacterMap.get(self.port, melee.Character.CPTFALCON), gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
-                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.agent_controller, cpu_level=0, costume=2, swag=False, start=False)
+                melee.menuhelper.MenuHelper.choose_character(character=self.portToCharacterMap.get(self.port, melee.Character.MARTH), gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
+                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.MARTH, gamestate=self.gamestate, controller=self.agent_controller, cpu_level=0, costume=2, swag=False, start=False)
                 if (self.gamestate.players[self.adversary_controller.port].cpu_level == self.opponent): # ready to start
                     melee.menuhelper.MenuHelper.skip_postgame(controller=self.agent_controller, gamestate=self.gamestate) # spam start
             
             # Select stage
             elif (self.gamestate.menu_state in [melee.enums.Menu.STAGE_SELECT]):
                 self._clear_inputs()
-                melee.menuhelper.MenuHelper.choose_stage(gamestate=self.gamestate, controller=self.agent_controller, stage=melee.enums.Stage.BATTLEFIELD)
+                melee.menuhelper.MenuHelper.choose_stage(gamestate=self.gamestate, controller=self.agent_controller, stage=melee.enums.Stage.FINAL_DESTINATION)
 
         self.prev_obs = None
         return self._get_flat_state(self._get_obs()), None
 
     def can_receive_action(self):
         agent = self.gamestate.players[self.agent_controller.port]
-        return self.framedata.attack_state(melee.Character.CPTFALCON, agent.action, agent.action_frame) == melee.enums.AttackState.NOT_ATTACKING
+        return self.framedata.attack_state(melee.Character.MARTH, agent.action, agent.action_frame) == melee.enums.AttackState.NOT_ATTACKING
 
     def get_obs_shape(self):
         input_size = 0
@@ -222,53 +222,51 @@ class MeleeEnv(gym.Env):
         adversary = self.gamestate.players[self.adversary_controller.port]
         
         obs = {
-            'position': np.array([agent.position.x, agent.position.y]),
-            'shield_strength': np.array([agent.shield_strength]),
-            'percent': np.array([agent.percent]),
+            'position': np.array([(agent.position.x + 100) / 200, (agent.position.y + 100) / 200]), 
+            'shield_strength': np.array([agent.shield_strength / 60]),
+            'percent': np.array([agent.percent / 300]),
             'speed': np.array(
-                [agent.speed_air_x_self,
-                agent.speed_ground_x_self,
-                agent.speed_y_self,
-                agent.speed_x_attack,
-                agent.speed_y_attack]
+                [(agent.speed_air_x_self + 3) / 6, 
+                (agent.speed_ground_x_self + 3) / 6,
+                (agent.speed_y_self + 5) / 10,
+                (agent.speed_x_attack + 12) / 24,
+                (agent.speed_y_attack + 12) / 24]
             ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
             'state':  np.array(
                 [agent.facing,
                 agent.on_ground,
-                agent.off_stage,
-                agent.invulnerable]
-            ), # facing, on_ground, on_stage, invulnerable
+                agent.off_stage]
+            ), # facing, on_ground, on_stage
             'state_remainder': np.array(
-                [agent.jumps_left,
-                agent.invulnerability_left,
-                agent.hitstun_frames_left]
+                [agent.jumps_left / 2,
+                agent.invulnerability_left / 120,
+                agent.hitstun_frames_left / 120]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
-            'stock': np.array([agent.stock]),
-            'action': np.array([agent.action.value, agent.action_frame]), # action_frame
+            'stock': np.array([agent.stock / 4]),
+            'action': np.array([agent.action_frame / 120]), # action_frame
             
-            'adversary_position': np.array([adversary.position.x, adversary.position.y]),
-            'adversary_shield_strength': np.array([adversary.shield_strength]),
-            'adversary_percent': np.array([adversary.percent]),
+            'adversary_position': np.array([(adversary.position.x + 100) / 200, (adversary.position.y + 100) / 200]),
+            'adversary_shield_strength': np.array([adversary.shield_strength / 60]),
+            'adversary_percent': np.array([adversary.percent / 300]),
             'adversary_speed': np.array(
-                [adversary.speed_air_x_self,
-                adversary.speed_ground_x_self,
-                adversary.speed_y_self,
-                adversary.speed_x_attack,
-                adversary.speed_y_attack]
+                [(adversary.speed_air_x_self + 3) / 6, 
+                (adversary.speed_ground_x_self + 3) / 6,
+                (adversary.speed_y_self + 5) / 10,
+                (adversary.speed_x_attack + 12) / 24,
+                (adversary.speed_y_attack + 12) / 24]
             ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
             'adversary_state':  np.array(
                 [adversary.facing,
                 adversary.on_ground,
-                adversary.off_stage,
-                adversary.invulnerable]
-            ), # facing, on_ground, on_stage, invulnerable
+                adversary.off_stage]
+            ), # facing, on_ground, on_stage
             'adversary_state_remainder': np.array(
-                [adversary.jumps_left,
-                adversary.invulnerability_left,
-                adversary.hitstun_frames_left]
+                [adversary.jumps_left / 2,
+                adversary.invulnerability_left / 120,
+                adversary.hitstun_frames_left / 120]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
-            'adversary_stock': np.array([adversary.stock]),
-            'adversary_action': np.array([adversary.action.value, adversary.action_frame]) # action_frame
+            'adversary_stock': np.array([adversary.stock / 4]),
+            'adversary_action': np.array([adversary.action_frame / 120]), # action_frame
         }
 
         return obs
@@ -282,7 +280,7 @@ class MeleeEnv(gym.Env):
             # agent_stage_dist = np.clip(abs(obs['position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MINIMIZE
             # adversary_stage_dist = np.clip(abs(obs['adversary_position'][0]) - abs(melee.stages.EDGE_POSITION[melee.Stage.BATTLEFIELD]), 0.0, 50.0) # MAXIMIZE
             # agent_y_delta = np.clip(obs['position'][1] - self.prev_obs['position'][1], -5.0, 15.0)
-            # agent_frame_count = np.clip(self.framedata.frame_count(character=melee.Character.CPTFALCON, action=melee.enums.Action(obs['action'][0])), 0.0, 50.0) # PENALIZE
+            # agent_frame_count = np.clip(self.framedata.frame_count(character=melee.Character.MARTH, action=melee.enums.Action(obs['action'][0])), 0.0, 50.0) # PENALIZE
             # agent_curr_frame = obs['action'][1]
 
             # # Multipliers

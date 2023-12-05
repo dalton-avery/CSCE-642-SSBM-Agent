@@ -72,13 +72,6 @@ class A3CWorker(mp.Process):
         self.optimizer = global_adam
         self.global_net = global_net
 
-        self.idToCharacterMap = {
-                    0: 'Cpt Falcon',
-                    1: 'Marth',
-                    2: 'Roy',
-                    3: 'Ganondorf'
-                }
-
     def run(self):
         self.env = MeleeEnv(self.options.versus, port=51441+self.id)
         self.local_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
