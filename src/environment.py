@@ -222,15 +222,15 @@ class MeleeEnv(gym.Env):
         adversary = self.gamestate.players[self.adversary_controller.port]
         
         obs = {
-            'position': np.array([(agent.position.x + 100) / 200, (agent.position.y + 100) / 200]), 
+            'position': np.array([(agent.position.x + 250) / 500, (agent.position.y + 250) / 500]), 
             'shield_strength': np.array([agent.shield_strength / 60]),
             'percent': np.array([agent.percent / 300]),
             'speed': np.array(
-                [(agent.speed_air_x_self + 3) / 6, 
-                (agent.speed_ground_x_self + 3) / 6,
-                (agent.speed_y_self + 5) / 10,
-                (agent.speed_x_attack + 12) / 24,
-                (agent.speed_y_attack + 12) / 24]
+                [(agent.speed_air_x_self + 18) / 36, 
+                (agent.speed_ground_x_self + 18) / 36,
+                (agent.speed_y_self + 18) / 36,
+                (agent.speed_x_attack + 18) / 36,
+                (agent.speed_y_attack + 18) / 36]
             ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
             'state':  np.array(
                 [agent.facing,
@@ -239,21 +239,21 @@ class MeleeEnv(gym.Env):
             ), # facing, on_ground, on_stage
             'state_remainder': np.array(
                 [agent.jumps_left / 2,
-                agent.invulnerability_left / 120,
-                agent.hitstun_frames_left / 120]
+                (agent.invulnerability_left + 1) / 301,
+                (agent.hitstun_frames_left + 1) / 301]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
             'stock': np.array([agent.stock / 4]),
-            'action': np.array([agent.action_frame / 120]), # action_frame
+            'action': np.array([(agent.action_frame + 1) / 241]), # action_frame
             
-            'adversary_position': np.array([(adversary.position.x + 100) / 200, (adversary.position.y + 100) / 200]),
+            'adversary_position': np.array([(adversary.position.x + 250) / 500, (adversary.position.y + 250) / 500]),
             'adversary_shield_strength': np.array([adversary.shield_strength / 60]),
             'adversary_percent': np.array([adversary.percent / 300]),
             'adversary_speed': np.array(
-                [(adversary.speed_air_x_self + 3) / 6, 
-                (adversary.speed_ground_x_self + 3) / 6,
-                (adversary.speed_y_self + 5) / 10,
-                (adversary.speed_x_attack + 12) / 24,
-                (adversary.speed_y_attack + 12) / 24]
+                [(adversary.speed_air_x_self + 18) / 36, 
+                (adversary.speed_ground_x_self + 18) / 36,
+                (adversary.speed_y_self + 18) / 36,
+                (adversary.speed_x_attack + 18) / 36,
+                (adversary.speed_y_attack + 18) / 36]
             ),    # speed_air_x_self, speed_ground_x_self, speed_x_attack, speed_y_attack, speed_y_self
             'adversary_state':  np.array(
                 [adversary.facing,
@@ -262,11 +262,11 @@ class MeleeEnv(gym.Env):
             ), # facing, on_ground, on_stage
             'adversary_state_remainder': np.array(
                 [adversary.jumps_left / 2,
-                adversary.invulnerability_left / 120,
-                adversary.hitstun_frames_left / 120]
+                (adversary.invulnerability_left + 1) / 301,
+                (adversary.hitstun_frames_left + 1) / 301]
             ), # jumps_left, invulnerability_left, hitstun_frames_left
             'adversary_stock': np.array([adversary.stock / 4]),
-            'adversary_action': np.array([adversary.action_frame / 120]), # action_frame
+            'adversary_action': np.array([(adversary.action_frame + 1) / 241]), # action_frame
         }
 
         return obs

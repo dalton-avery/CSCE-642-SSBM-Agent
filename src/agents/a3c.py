@@ -6,6 +6,7 @@ from torch.optim import Adam
 import numpy as np
 from environment import MeleeEnv
 from argparser import getMode, Modes
+from agents.sendmail import send_udpate
 
 
 class GlobAdam(torch.optim.Adam):
@@ -84,7 +85,6 @@ class A3CWorker(mp.Process):
             episode_reward = 0
             step_count = 1
             while self.options.steps_per_episode:    
-                forced_noop = False
 
                 sampled_action = self.choose_action(state)
                 if self.env.can_receive_action(): # only set new action if can receive new input
@@ -112,9 +112,16 @@ class A3CWorker(mp.Process):
                         break
 
                 state=next_state
+
+                if np.any((state < 0) | (state > 1)):
+                    print(state)
+
                 step_count += 1
             reward_hist.append(episode_reward)
             print('Episode:', self.global_episodes.value, 'Reward:', episode_reward, '\n')
+            
+            if self.global_episodes.value < 4:
+                send_udpate(self.global_episodes.value, episode_reward)
             
             torch.save(self.global_net, "./src/agents/a3c/global.pt")
             self.save_rewards(reward_hist, f'./src/agents/a3c/rewards-{self.id}.txt')
@@ -190,7 +197,7 @@ class A3C:
 
     def load_network(self):
         if getMode(self.options.mode) == Modes.UPDATE:
-            print('loading previous model')
+            print('loading previous a3c model')
             return torch.load("./src/agents/a3c/global.pt")
         else:
             return ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
