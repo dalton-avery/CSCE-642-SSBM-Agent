@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.optim import Adam
 import numpy as np
 from environment import MeleeEnv
-from agents.sendmail import send_udpate
 from argparser import getMode, Modes
 
 
