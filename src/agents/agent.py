@@ -18,5 +18,5 @@ class Agent:
             self.solver = A3C(options)
         
         # Load trained model
-        if self.mode != Modes.TRAIN:
+        if self.mode != Modes.TRAIN and self.solverType != Solvers.A3C:
             self.solver.load()

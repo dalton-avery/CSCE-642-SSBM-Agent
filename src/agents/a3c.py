@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch.optim import Adam
 import numpy as np
 from environment import MeleeEnv
+from agents.sendmail import send_udpate
+from argparser import getMode, Modes
 
 
 class GlobAdam(torch.optim.Adam):
@@ -71,10 +73,19 @@ class A3CWorker(mp.Process):
         self.optimizer = global_adam
         self.global_net = global_net
 
+        self.idToCharacterMap = {
+                    0: 'Cpt Falcon',
+                    1: 'Marth',
+                    2: 'Roy',
+                    3: 'Ganondorf'
+                }
+
     def run(self):
         self.env = MeleeEnv(self.options.versus, port=51441+self.id)
         self.local_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
-        reward_hist = []
+        reward_hist, prev_episodes = self.load_rewards(file_path=f'./src/agents/a3c/rewards-{self.id}.txt')
+        with self.global_episodes.get_lock():
+            self.global_episodes.value += prev_episodes
         while self.global_episodes.value < self.options.episodes:
             state, _ = self.env.reset()    
             buffer_s, buffer_a, buffer_r = [], [], []
@@ -82,25 +93,27 @@ class A3CWorker(mp.Process):
             step_count = 1
             while self.options.steps_per_episode:    
                 forced_noop = False
+
                 sampled_action = self.choose_action(state)
                 if self.env.can_receive_action(): # only set new action if can receive new input
                     action = sampled_action
+                    temp_action = action
                 else:
+                    temp_action = action
                     action = 24 # no op
-                    forced_noop = True
-                print(f'Process {self.id} action: {action}')
+                
                 next_state, reward, done, _, _ = self.env.step(action)
-                if forced_noop:
-                    state=next_state
-                    continue
+                action = temp_action
+                # print(f'Process {self.id} action: {action} reward: {reward}')
+                
                 episode_reward += reward
-                buffer_s.append(state)
                 buffer_a.append(action)
+                buffer_s.append(state)
                 buffer_r.append(reward)
+
                 if step_count % self.options.update_frequency == 0 or done:
                     self.updateNetworks(self.local_net, self.global_net, next_state, done, buffer_s, buffer_a, buffer_r)
                     buffer_s, buffer_a, buffer_r = [], [], []
-                    print('Episode:', self.global_episodes.value, 'Step:', step_count, 'Reward:', episode_reward, '\n')
                     if done:
                         with self.global_episodes.get_lock():
                             self.global_episodes.value += 1
@@ -109,6 +122,7 @@ class A3CWorker(mp.Process):
                 state=next_state
                 step_count += 1
             reward_hist.append(episode_reward)
+            print('Episode:', self.global_episodes.value, 'Reward:', episode_reward, '\n')
             
             torch.save(self.global_net, "./src/agents/a3c/global.pt")
             self.save_rewards(reward_hist, f'./src/agents/a3c/rewards-{self.id}.txt')
@@ -150,6 +164,17 @@ class A3CWorker(mp.Process):
             for reward in rewards:
                 file.write(str(reward) + '\n')
 
+    def load_rewards(self, file_path='./src/agents/a3c/rewards.txt'):
+        rewards = []
+        if getMode(self.options.mode) == Modes.UPDATE:
+            try:
+                with open(file_path, 'r') as file:
+                    lines = file.readlines()
+                    rewards = [float(line.strip()) for line in lines]
+                    print("Loading previous rewards")
+            except FileNotFoundError:
+                print("File not found. Returning empty rewards list.")
+        return rewards, len(rewards)
 
 class A3C:
     def __init__(self, options):
@@ -157,7 +182,7 @@ class A3C:
         self.env = MeleeEnv(options.versus)
         self.options = options
 
-        self.global_net = ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)
+        self.global_net = self.load_network()
         self.global_net.share_memory()
         
         self.global_adam = GlobAdam(self.global_net.parameters(), lr=self.options.alpha)
@@ -170,3 +195,10 @@ class A3C:
         self.workers = [A3CWorker(self.options, id, self.global_episodes, self.global_adam, self.global_net) for id in range(self.options.num_workers)]
         [worker.start() for worker in self.workers]
         [worker.join() for worker in self.workers]
+
+    def load_network(self):
+        if getMode(self.options.mode) == Modes.UPDATE:
+            print('loading previous model')
+            return torch.load("./src/agents/a3c/global.pt")
+        else:
+            return ActorCriticNetwork(self.env.get_obs_shape(), self.env.action_space.n, self.options.layers)

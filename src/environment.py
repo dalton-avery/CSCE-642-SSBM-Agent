@@ -39,6 +39,13 @@ class MeleeEnv(gym.Env):
             'adversary_action': gym.spaces.Discrete(2) # action_frame
         })
 
+        self.portToCharacterMap = {
+            51441: melee.Character.CPTFALCON,
+            51442: melee.Character.MARTH,
+            51443: melee.Character.ROY,
+            51444: melee.Character.GANONDORF
+        }
+
         self.gamestate = None
         self.framedata = melee.framedata.FrameData()
         
@@ -69,7 +76,7 @@ class MeleeEnv(gym.Env):
             # Select characters
             if (self.gamestate.menu_state in [melee.enums.Menu.CHARACTER_SELECT]):
                 self._clear_inputs()
-                melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
+                melee.menuhelper.MenuHelper.choose_character(character=self.portToCharacterMap.get(self.port, melee.Character.CPTFALCON), gamestate=self.gamestate, controller=self.adversary_controller, cpu_level=self.opponent, costume=1, swag=False, start=False)
                 melee.menuhelper.MenuHelper.choose_character(character=melee.enums.Character.CPTFALCON, gamestate=self.gamestate, controller=self.agent_controller, cpu_level=0, costume=2, swag=False, start=False)
                 if (self.gamestate.players[self.adversary_controller.port].cpu_level == self.opponent): # ready to start
                     melee.menuhelper.MenuHelper.skip_postgame(controller=self.agent_controller, gamestate=self.gamestate) # spam start
@@ -306,8 +313,8 @@ class MeleeEnv(gym.Env):
             # SIMPLIFY
             # damage
             const_p = 1/300
-            [agent_percent_delta] = obs['percent'] - self.prev_obs['percent'] 
-            [adversary_percent_delta] = (obs['adversary_percent'] - self.prev_obs['adversary_percent'])
+            [agent_percent_delta] = np.clip((obs['percent'] - self.prev_obs['percent']), 0.0, 45.0)
+            [adversary_percent_delta] = np.clip((obs['adversary_percent'] - self.prev_obs['adversary_percent']), 0.0, 45.0)
             damage_reward = const_p * (adversary_percent_delta - agent_percent_delta)
 
             # get back on stage
