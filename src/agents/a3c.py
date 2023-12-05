@@ -6,7 +6,6 @@ from torch.optim import Adam
 import numpy as np
 from environment import MeleeEnv
 from argparser import getMode, Modes
-from agents.sendmail import send_udpate
 
 
 class GlobAdam(torch.optim.Adam):
@@ -119,9 +118,6 @@ class A3CWorker(mp.Process):
                 step_count += 1
             reward_hist.append(episode_reward)
             print('Episode:', self.global_episodes.value, 'Reward:', episode_reward, '\n')
-            
-            if self.global_episodes.value < 4:
-                send_udpate(self.global_episodes.value, episode_reward)
             
             torch.save(self.global_net, "./src/agents/a3c/global.pt")
             self.save_rewards(reward_hist, f'./src/agents/a3c/rewards-{self.id}.txt')
